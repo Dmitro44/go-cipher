@@ -1,4 +1,4 @@
-#import "lib/stp2024.typ"
+#import "@local/bsuir_typst:0.1.0": stp2024
 #show: stp2024.template
 
 #include "lab_title.typ"
@@ -183,7 +183,4 @@ $
     #raw(read("code/gammaFeedback.go"))
   ]
 
-  #stp2024.listing[Тесты на официальных примерах][
-    #raw(read("code/belt_test.go"))
-  ]
 ]
