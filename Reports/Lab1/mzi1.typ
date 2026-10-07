@@ -170,7 +170,6 @@
 #bibliography("bibliography.yml")
 
 #stp2024.appendix(title: [Листинг программного кода], type: [Обязательное])[
-  Основные фрагменты реализации алгоритма ГОСТ 28147-89.
 
   #stp2024.listing[Базовый блочный шифр][
     #raw(read("code/gost.go"))

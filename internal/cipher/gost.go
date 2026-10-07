@@ -22,9 +22,13 @@ func (Gost) Methods() []string {
 	return []string{"Simple", "Gamma", "Gamma with feedback", "Gamma with MAC"}
 }
 
+func (Gost) KeySize() int {
+	return gost.KeySize
+}
+
 func (Gost) Run(method int, decrypt bool, in, key []byte) (string, error) {
-	if len(key) != 32 {
-		return "", fmt.Errorf("key must be 32 bytes")
+	if len(key) != gost.KeySize {
+		return "", fmt.Errorf("key must be %d bytes", gost.KeySize)
 	}
 
 	switch method {

@@ -33,5 +33,5 @@ const (
 )
 
 type PaneKeymap = struct {
-	next, prev, copy, clearInput, clearKey key.Binding
+	next, prev, copy, clearInput, clearKey, genKey key.Binding
 }

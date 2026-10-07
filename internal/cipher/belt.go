@@ -22,9 +22,13 @@ func (Belt) Methods() []string {
 	return []string{"Simple", "Gamma with Feedback"}
 }
 
+func (Belt) KeySize() int {
+	return belt.KeySize
+}
+
 func (Belt) Run(method int, decrypt bool, in, key []byte) (string, error) {
-	if len(key) != 32 {
-		return "", fmt.Errorf("key must be 32 bytes")
+	if len(key) != belt.KeySize {
+		return "", fmt.Errorf("key must be %d bytes", belt.KeySize)
 	}
 
 	switch method {

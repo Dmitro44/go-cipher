@@ -67,5 +67,8 @@ func newPaneKeymap() PaneKeymap {
 		clearKey: key.NewBinding(
 			key.WithKeys("ctrl+k"),
 		),
+		genKey: key.NewBinding(
+			key.WithKeys("ctrl+g"),
+		),
 	}
 }

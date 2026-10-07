@@ -1,6 +1,7 @@
 package cipherpane
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"os"
 	"strings"
@@ -176,6 +177,14 @@ func (p CipherPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 			p.ShowSavePopup = true
 			p.SaveFilename.SetValue("")
 			p.SaveFilename.Focus()
+			return p, nil
+		case p.Focus == FocusKey && key.Matches(msg, p.PaneKeymap.genKey):
+			generated, err := generateRandomKey(p.Cipher.KeySize())
+			if err != nil {
+				p.Status = "failed to generate key"
+				return p, tea.Tick(3*time.Second, func(time.Time) tea.Msg { return statusMsg("") })
+			}
+			p.Key.SetValue(generated)
 			return p, nil
 		}
 	}
@@ -461,4 +470,13 @@ func (p *CipherPane) updateFocus() {
 
 func (p CipherPane) shouldClearKey(msg tea.KeyMsg) bool {
 	return p.Focus == FocusKey && key.Matches(msg, p.PaneKeymap.clearKey) && p.Key.Value() != ""
+}
+
+func generateRandomKey(size int) (string, error) {
+	bytes := make([]byte, size)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(bytes), nil
 }
