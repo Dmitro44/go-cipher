@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	KeySize = 32
+	BlockSize = 8
+	KeySize   = 32
 )
 
 // id-tc26-gost-28147-param-Z (RFC 7836)
