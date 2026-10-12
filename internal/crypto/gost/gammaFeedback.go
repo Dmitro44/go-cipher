@@ -2,6 +2,10 @@ package gost
 
 import "crypto/rand"
 
+func GammaFeedbackGen(prev, key []byte) []byte {
+	return BlockEncrypt32(prev, key)
+}
+
 func GammaWithFeedbackEncrypt(data, key []byte) ([]byte, []byte) {
 	iv := make([]byte, 8)
 	if _, err := rand.Read(iv); err != nil {
@@ -13,7 +17,7 @@ func GammaWithFeedbackEncrypt(data, key []byte) ([]byte, []byte) {
 	prev := iv
 
 	for i := 0; i < len(padded); i += 8 {
-		gamma := Gamma(prev, key, 8)
+		gamma := GammaFeedbackGen(prev, key)
 
 		block := padded[i : i+8]
 		for j := range block {
@@ -31,7 +35,7 @@ func GammaWithFeedbackDecrypt(data, key, iv []byte) []byte {
 	prev := iv
 
 	for i := 0; i < len(data); i += 8 {
-		gamma := Gamma(prev, key, 8)
+		gamma := GammaFeedbackGen(prev, key)
 
 		block := data[i : i+8]
 		for j := range block {
