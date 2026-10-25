@@ -27,7 +27,7 @@ func newKeymap() Keymap {
 			key.WithKeys("esc", "ctrl+c"),
 		),
 		tabSwitch: key.NewBinding(
-			key.WithKeys("alt+1", "alt+2", "alt+3", "alt+4", "alt+5"),
+			key.WithKeys("alt+1", "alt+2", "alt+3", "alt+4", "alt+5", "alt+6", "alt+7", "alt+8"),
 		),
 	}
 }
