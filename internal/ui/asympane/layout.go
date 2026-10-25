@@ -1,9 +1,11 @@
 package asympane
 
+import "go-cipher/internal/ui"
+
 const (
 	// PanelMargin is the vertical space taken by the tab bar and the gap
 	// between it and the pane.
-	PanelMargin = 3
+	PanelMargin = ui.TabBarHeight
 
 	// KeyPanelContentHeight is the number of rows inside the keyring panel:
 	// header, blank, key labels + fields, blank, footer.
@@ -65,7 +67,9 @@ func NewLayout(width, height int) Layout {
 
 	l.TextareaWidth = l.LeftPanelWidth - 4
 	l.TextareaHeight = l.MessagePanelHeight - 1
-	l.FilepickerHeight = l.MessagePanelHeight - 1
+	// The filepicker renders one line more than its height, and the panel
+	// reserves one line for its title.
+	l.FilepickerHeight = l.MessagePanelHeight - 2
 
 	return l
 }

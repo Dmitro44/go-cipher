@@ -9,9 +9,13 @@ import (
 	"go-cipher/internal/ui/cipherpane"
 
 	tea "github.com/charmbracelet/bubbletea"
+	zone "github.com/lrstanley/bubblezone"
 )
 
 func main() {
+	zone.NewGlobal()
+	defer zone.Close()
+
 	gost := cipher.NewGost()
 	belt := cipher.NewBelt()
 
@@ -23,6 +27,7 @@ func main() {
 	if _, err := tea.NewProgram(
 		m,
 		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
 	).Run(); err != nil {
 		fmt.Printf("error: %s", err)
 		os.Exit(1)

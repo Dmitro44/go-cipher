@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"strconv"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -36,7 +38,12 @@ func NewModel(tabs ...Tab) Model {
 	return Model{
 		Keymap: newKeymap(),
 		Tabs:   tabs,
+		Zones:  NewZones("tabs"),
 	}
+}
+
+func tabZone(i int) string {
+	return "tab-" + strconv.Itoa(i)
 }
 
 func (m Model) Init() tea.Cmd {
@@ -53,6 +60,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 		return m, tea.Batch(cmds...)
+
+	case tea.MouseMsg:
+		if IsLeftClick(msg) {
+			for i := range m.Tabs {
+				if m.Zones.Clicked(tabZone(i), msg) {
+					m.ActiveTab = i
+					return m, nil
+				}
+			}
+		}
 
 	case tea.KeyMsg:
 		switch {
@@ -83,12 +100,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var tabs []string
 	for i, tab := range m.Tabs {
+		style := inactiveTabStyle
 		if i == m.ActiveTab {
-			tabs = append(tabs, activeTabStyle.Render(tab.Title))
-		} else {
-			tabs = append(tabs, inactiveTabStyle.Render(tab.Title))
+			style = activeTabStyle
 		}
+		tabs = append(tabs, m.Zones.Mark(tabZone(i), style.Render(tab.Title)))
 	}
 
-	return lipgloss.JoinHorizontal(0, tabs...) + "\n" + m.Tabs[m.ActiveTab].Pane.View()
+	return Scan(lipgloss.JoinHorizontal(0, tabs...) + "\n" + m.Tabs[m.ActiveTab].Pane.View())
 }
