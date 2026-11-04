@@ -836,25 +836,25 @@ func (p StegoPane) previewView(l Layout) string {
 	if p.Fullscreen != FullscreenNone {
 		switch p.Fullscreen {
 		case FullscreenOriginal:
-			return p.previewColumn("ORIGINAL · f — next · Esc — back", p.OriginalImage, &p.PreviewOriginal, l.PanelWidth, l.FullscreenRows)
+			return p.previewColumn("ORIGINAL · f — next · Esc — back", p.OriginalImage, p.PreviewOriginal, l.PanelWidth, l.FullscreenRows)
 		case FullscreenStego:
-			return p.previewColumn("STEGO · f — next · Esc — back", p.StegoImage, &p.PreviewStego, l.PanelWidth, l.FullscreenRows)
+			return p.previewColumn("STEGO · f — next · Esc — back", p.StegoImage, p.PreviewStego, l.PanelWidth, l.FullscreenRows)
 		default:
-			return p.previewColumn("DIFF ×20 · f — next · Esc — back", p.DiffImage, &p.PreviewDiff, l.PanelWidth, l.FullscreenRows)
+			return p.previewColumn("DIFF ×20 · f — next · Esc — back", p.DiffImage, p.PreviewDiff, l.PanelWidth, l.FullscreenRows)
 		}
 	}
 
 	if p.Mode == ModeExtract {
-		return p.previewColumn("CONTAINER", p.OriginalImage, &p.PreviewOriginal, l.PanelWidth, l.PreviewRows)
+		return p.previewColumn("CONTAINER", p.OriginalImage, p.PreviewOriginal, l.PanelWidth, l.PreviewRows)
 	}
 
 	return lipgloss.JoinHorizontal(
 		lipgloss.Top,
-		p.previewColumn("ORIGINAL", p.OriginalImage, &p.PreviewOriginal, l.ColumnWidth, l.PreviewRows),
+		p.previewColumn("ORIGINAL", p.OriginalImage, p.PreviewOriginal, l.ColumnWidth, l.PreviewRows),
 		"  ",
-		p.previewColumn("STEGO", p.StegoImage, &p.PreviewStego, l.ColumnWidth, l.PreviewRows),
+		p.previewColumn("STEGO", p.StegoImage, p.PreviewStego, l.ColumnWidth, l.PreviewRows),
 		"  ",
-		p.previewColumn("DIFF ×20", p.DiffImage, &p.PreviewDiff, l.ColumnWidth, l.PreviewRows),
+		p.previewColumn("DIFF ×20", p.DiffImage, p.PreviewDiff, l.ColumnWidth, l.PreviewRows),
 	)
 }
 
