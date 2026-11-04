@@ -15,4 +15,5 @@ type PaneBase struct {
 	Status        string
 	Focus         int
 	Keymap        Keymap
+	Zones         Zones
 }

@@ -8,6 +8,7 @@ type Model struct {
 	Keymap    Keymap
 	Tabs      []Tab
 	ActiveTab int
+	Zones     Zones
 }
 
 type Tab struct {
