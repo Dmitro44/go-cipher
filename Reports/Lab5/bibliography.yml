@@ -1,0 +1,54 @@
+rabin1979:
+  type: Report
+  title:
+    value: "Digitalized Signatures and Public-Key Functions as Intractable as Factorization"
+    short: ""
+  author: ["Rabin, Michael O."]
+  date: 1979
+  organization: MIT Laboratory for Computer Science
+  serial-number: "MIT/LCS/TR-212"
+  language: en
+
+menezes1996:
+  type: Book
+  title:
+    value: "Handbook of Applied Cryptography"
+    short: ""
+  author: ["Menezes, Alfred J.", "van Oorschot, Paul C.", "Vanstone, Scott A."]
+  publisher:
+    name: CRC Press
+    location: Boca Raton
+  date: 1996
+  page-total: 780
+  language: en
+
+mzi2024:
+  type: Report
+  title:
+    value: "Лабораторные работы по дисциплине «Методы защиты информации» : методические указания"
+    short: ""
+  date: 2024
+  organization: БГУИР
+  language: ru
+
+rfc6986:
+  type: Report
+  title:
+    value: "GOST R 34.11-2012: Hash Function"
+    short: ""
+  author: ["Dolmatov, Vasily", "Degtyarev, Alexandr"]
+  date: 2013
+  organization: IETF
+  serial-number: "RFC 6986"
+  language: en
+
+fips1804:
+  type: Report
+  title:
+    value: "Secure Hash Standard (SHS)"
+    short: ""
+  author: ["National Institute of Standards and Technology"]
+  date: 2015
+  organization: NIST
+  serial-number: "FIPS PUB 180-4"
+  language: en
