@@ -131,10 +131,10 @@ $
 
 #stp2024.appendix(title: [Листинг программного кода], type: [Обязательное])[
   #stp2024.listing[Криптосистема Рабина][
-    #raw(read("code/rabin.go"))
+    #raw(read("code/_rabin.go"))
   ]
 
   #stp2024.listing[Адаптер к интерфейсу программы][
-    #raw(read("code/rabinCipher.go"))
+    #raw(read("code/_rabinCipher.go"))
   ]
 ]
