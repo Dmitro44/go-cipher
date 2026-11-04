@@ -42,6 +42,16 @@ func newFilepicker() filepicker.Model {
 	return fp
 }
 
+func newMessageFilepicker() filepicker.Model {
+	fp := filepicker.New()
+	fp.AllowedTypes = []string{".txt", ".md", ".go", ".json"}
+	dir, _ := os.Getwd()
+	fp.CurrentDirectory = dir
+	fp.FileAllowed = true
+	fp.DirAllowed = false
+	return fp
+}
+
 func newPicture(kittyID int) picture.Model {
 	return picture.NewWithConfig(picture.Config{
 		KittyID:    kittyID,
@@ -63,9 +73,10 @@ func newSaveFilename() textinput.Model {
 
 func newPaneKeymap() PaneKeymap {
 	return PaneKeymap{
-		fullscreen: key.NewBinding(key.WithKeys("f")),
-		next:       key.NewBinding(key.WithKeys("tab")),
-		prev:       key.NewBinding(key.WithKeys("shift+tab")),
+		fullscreen:  key.NewBinding(key.WithKeys("f")),
+		messageFile: key.NewBinding(key.WithKeys("ctrl+o")),
+		next:        key.NewBinding(key.WithKeys("tab")),
+		prev:        key.NewBinding(key.WithKeys("shift+tab")),
 		clearMessage: key.NewBinding(
 			key.WithKeys("alt+d"),
 		),

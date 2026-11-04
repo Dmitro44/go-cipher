@@ -153,6 +153,20 @@ func (p StegoPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 			p.clearStatusCmd(),
 		)
 
+	case messageLoadedMsg:
+		if msg.err != nil {
+			p.setError("Cannot read message file: " + msg.err.Error())
+			cmds = append(cmds, p.clearStatusCmd())
+			break
+		}
+		p.Message.SetValue(msg.text)
+		p.Message.CursorEnd()
+		p.setStatus(fmt.Sprintf(
+			"Message loaded from %s · %d B",
+			filepath.Base(msg.path), len(msg.text),
+		))
+		cmds = append(cmds, p.clearStatusCmd())
+
 	case saveContainerMsg:
 		p.Busy = false
 		if msg.err != nil {
@@ -237,7 +251,11 @@ func (p StegoPane) handleKey(msg tea.KeyPressMsg, cmds []tea.Cmd) (ui.Pane, tea.
 
 		if selected, path := p.Filepicker.DidSelectFile(msg); selected {
 			p.PickerOpen = false
-			cmds = append(cmds, p.loadSource(path))
+			if p.PickerTarget == PickerMessage {
+				cmds = append(cmds, p.loadMessageFile(path))
+			} else {
+				cmds = append(cmds, p.loadSource(path))
+			}
 			cmds = append(cmds, p.applyLayout(p.layout()))
 		}
 
@@ -271,16 +289,16 @@ func (p StegoPane) handleKey(msg tea.KeyPressMsg, cmds []tea.Cmd) (ui.Pane, tea.
 		}
 		p.forwardToPictures(msg, &cmds)
 		return p, tea.Batch(append(cmds, p.clearStatusCmd())...)
+	case key.Matches(msg, p.PaneKeymap.messageFile):
+		cmds = append(cmds, p.openPicker(PickerMessage))
+		p.forwardToPictures(msg, &cmds)
+		return p, tea.Batch(cmds...)
 	}
 
 	if msg.String() == "enter" {
 		switch p.Focus {
 		case FocusSource:
-			p.PickerOpen = true
-			p.Filepicker = newFilepicker()
-			p.Filepicker.SetHeight(FilepickerHeight)
-			cmds = append(cmds, p.Filepicker.Init())
-			cmds = append(cmds, p.applyLayout(p.layout()))
+			cmds = append(cmds, p.openPicker(PickerImage))
 			p.forwardToPictures(msg, &cmds)
 			return p, tea.Batch(cmds...)
 		case FocusMode:
@@ -344,7 +362,8 @@ func (p *StegoPane) forwardToPictures(msg tea.Msg, cmds *[]tea.Cmd) {
 }
 
 func (p *StegoPane) layout() Layout {
-	return NewLayout(p.Width, p.Height, p.PickerOpen)
+	pickerOpen := p.PickerOpen && p.PickerTarget == PickerImage
+	return NewLayout(p.Width, p.Height, pickerOpen)
 }
 
 func (p *StegoPane) applyLayout(l Layout) tea.Cmd {
@@ -397,6 +416,36 @@ func (p *StegoPane) previewHeight(kind FullscreenMode, l Layout) int {
 // loadSource decodes the picked file off the UI goroutine: decoding a large
 // JPEG plus the capacity scan takes long enough to freeze the interface if it
 // ran inside Update.
+// openPicker starts the file picker for the image or for the message text. The
+// allowed extensions differ, so the picker model is rebuilt per target.
+func (p *StegoPane) openPicker(target PickerTarget) tea.Cmd {
+	p.PickerOpen = true
+	p.PickerTarget = target
+	if target == PickerMessage {
+		p.Filepicker = newMessageFilepicker()
+		p.Filepicker.SetHeight(MessageBandHeight - 3)
+	} else {
+		p.Filepicker = newFilepicker()
+		p.Filepicker.SetHeight(FilepickerHeight)
+	}
+	p.Message.Blur()
+
+	return tea.Batch(p.Filepicker.Init(), p.applyLayout(p.layout()))
+}
+
+// loadMessageFile reads the chosen text file off the UI goroutine and hands it
+// back to the pane as the message to hide.
+func (p *StegoPane) loadMessageFile(path string) tea.Cmd {
+	p.setStatus("Reading " + filepath.Base(path) + "…")
+	return func() tea.Msg {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return messageLoadedMsg{path: path, err: err}
+		}
+		return messageLoadedMsg{path: path, text: string(data)}
+	}
+}
+
 func (p *StegoPane) loadSource(path string) tea.Cmd {
 	p.Busy = true
 	p.setStatus("Opening " + filepath.Base(path) + "…")
@@ -673,7 +722,7 @@ func (p StegoPane) sourceView(l Layout) string {
 	params = ansi.Truncate(params, l.PanelWidth, "…")
 
 	lines := []string{pathLine, params}
-	if p.PickerOpen {
+	if p.PickerOpen && p.PickerTarget == PickerImage {
 		p.Filepicker.SetHeight(FilepickerHeight)
 		lines = append(lines, p.Filepicker.View())
 	}
@@ -685,7 +734,17 @@ func (p StegoPane) messageView(l Layout) string {
 	leftWidth := l.PanelWidth / 2
 	rightWidth := l.PanelWidth - leftWidth
 
-	leftContent := labelStyle.Render("MESSAGE") + "\n" + p.Message.View()
+	title := "MESSAGE"
+	body := p.Message.View()
+	if p.PickerOpen && p.PickerTarget == PickerMessage {
+		title = "MESSAGE FILE"
+		p.Filepicker.SetHeight(MessageBandHeight - 3)
+		body = p.Filepicker.View()
+	} else {
+		title += mutedStyle.Render("  Ctrl+O from file")
+	}
+
+	leftContent := labelStyle.Render(title) + "\n" + body
 	leftPanel := p.panel(leftWidth, l.MessagePanelHeight, p.Focus == FocusMessage).
 		Render(lipgloss.PlaceVertical(l.MessagePanelHeight-2, lipgloss.Top, leftContent))
 
@@ -766,7 +825,7 @@ func (p StegoPane) hintLine(width int) string {
 		}
 		return style.Render(ansi.Truncate(p.Status, width, "…"))
 	}
-	hint := "Tab fields · Enter activate · f fullscreen · Alt+D clear · Ctrl+D extracted→message · Esc quit"
+	hint := "Tab fields · Enter activate · f fullscreen · Ctrl+O message file · Alt+D clear · Esc quit"
 	if p.Fullscreen != FullscreenNone {
 		hint = "f next preview · Esc back to the pane"
 	}

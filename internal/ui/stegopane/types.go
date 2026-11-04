@@ -35,6 +35,14 @@ const (
 	FullscreenDiff
 )
 
+// PickerTarget says what the open file picker is choosing.
+type PickerTarget int
+
+const (
+	PickerImage PickerTarget = iota
+	PickerMessage
+)
+
 const (
 	FocusSource int = iota
 	FocusMessage
@@ -51,15 +59,18 @@ type PaneKeymap = struct {
 	clearMessage       key.Binding
 	extractedToMessage key.Binding
 	fullscreen         key.Binding
+	messageFile        key.Binding
 }
 
 type StegoPane struct {
 	ui.PaneBase
 
-	Message       textarea.Model
-	Filepicker    filepicker.Model
-	SelectedFile  string
-	PickerOpen    bool
+	Message      textarea.Model
+	Filepicker   filepicker.Model
+	SelectedFile string
+	PickerOpen   bool
+	// PickerTarget distinguishes the image picker from the message-file picker.
+	PickerTarget  PickerTarget
 	Mode          Mode
 	Stats         stego.Stats
 	Container     string
@@ -110,6 +121,13 @@ type embedMsg struct {
 	path      string
 	size      int
 	err       error
+}
+
+// messageLoadedMsg carries the contents of a message file back to the pane.
+type messageLoadedMsg struct {
+	path string
+	text string
+	err  error
 }
 
 // extractMsg carries the recovered payload back to the pane.
