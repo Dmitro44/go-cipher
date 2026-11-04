@@ -281,8 +281,4 @@ PSNR и числом изменённых пикселей. Это делает 
   #stp2024.listing[Встраивание, извлечение и статистика][
     #raw(read("code/_stego.go"))
   ]
-
-  #stp2024.listing[Терминальная панель Stego][
-    #raw(read("code/_stegopane.go"))
-  ]
 ]
