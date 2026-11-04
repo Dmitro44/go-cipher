@@ -279,11 +279,16 @@ $
 по #emph("Enter") на кнопке #emph("RUN"). #emph("Ctrl+D") переносит шифртекст из вывода во
 ввод, чтобы сразу расшифровать его тем же ключом.
 
-// Скриншот интерфейса вставляется здесь:
-// #figure(
-//   image("img/tui-elgamal.png", width: 100%),
-//   caption: [Вкладка #emph("EC ElGamal") терминального интерфейса],
-// )
+#figure(
+  image("img/tui-elgamal.png", width: 100%),
+  caption: [Вкладка #emph("EC ElGamal"): ключевая пара и шифртекст из двух блоков для
+    сообщения в 16 байт],
+)
+
+#figure(
+  image("img/tui-elgamal-decrypt.png", width: 100%),
+  caption: [Тот же экран в режиме #emph("Decrypt"): сообщение восстановлено],
+)
 
 == Тестирование
 

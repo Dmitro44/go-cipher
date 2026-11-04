@@ -82,8 +82,8 @@ func (p AsymPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 		p.Output.SetWidth(l.TextareaWidth)
 		p.Output.SetHeight(l.TextareaHeight)
 		p.Filepicker.SetHeight(l.FilepickerHeight)
-		p.PublicKey.SetWidth(l.KeyFieldWidth)
-		p.PrivateKey.SetWidth(l.KeyFieldWidth)
+		p.PublicKey.SetWidth(l.KeyFieldWidth - 2)
+		p.PrivateKey.SetWidth(l.KeyFieldWidth - 2)
 		p.SaveFilename.SetWidth(34)
 
 	case keysGeneratedMsg:
