@@ -1,14 +1,17 @@
 # go-cipher
 
 Terminal UI (Go + [Bubble Tea](https://github.com/charmbracelet/bubbletea)) for encrypting
-and decrypting text and files. Implements **GOST 28147-89** and **STB 34.101.31 (BelT)**.
+and decrypting text and files. Implements **GOST 28147-89** and **STB 34.101.31 (BelT)**,
+plus an asymmetric tab for **Rabin**.
 
 ![go-cipher TUI](Reports/Lab1/img/tui-cipher.png)
 
 ## Features
 
-- Two algorithms: GOST 28147-89 and STB 34.101.31 (BelT)
-- Modes: ECB, gamma (CTR), gamma with feedback (CFB), gamma with MAC (GOST only)
+- Three tabs: GOST 28147-89, STB 34.101.31 (BelT), Rabin
+- Symmetric modes: ECB, gamma (CTR), gamma with feedback (CFB), gamma with MAC (GOST only)
+- Asymmetric workflow: keypair generation, public-key encryption, private-key decryption
+- Private key is masked in its own field; `Ctrl+R` reveals it
 - Input manually or from a file (`.txt`, `.md`, `.go`), output can be saved to a file
 - Random key generation with key length validation
 
