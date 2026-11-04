@@ -68,10 +68,7 @@ func (p CipherPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 		p.Output.SetWidth(layout.TextareaOutputWidth)
 		p.Output.SetHeight(layout.TextareaOutputHeight)
 		p.Filepicker.SetHeight(layout.FilepickerHeight)
-		// bubbles v2 clips a placeholder to one rune when the width is zero and
-		// pads it one cell past the width, so the field keeps the panel line.
-		keyInnerWidth := LeftPanelWidth - 2
-		p.Key.SetWidth(keyInnerWidth - lipgloss.Width(p.Key.Prompt) - 1)
+		p.syncKeyWidth()
 		p.SaveFilename.SetWidth(34)
 
 	case statusMsg:
@@ -161,6 +158,7 @@ func (p CipherPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 			return p, nil
 		case p.shouldClearKey(msg):
 			p.Key.SetValue("")
+			p.syncKeyWidth()
 			return p, nil
 		case p.Focus == FocusInputMode && msg.String() == "enter":
 			p.InputMode = (p.InputMode + 1) % 2
@@ -191,6 +189,7 @@ func (p CipherPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 				return p, tea.Tick(3*time.Second, func(time.Time) tea.Msg { return statusMsg("") })
 			}
 			p.Key.SetValue(generated)
+			p.syncKeyWidth()
 			return p, nil
 		}
 	}
@@ -209,6 +208,7 @@ func (p CipherPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 	if p.Focus == FocusKey {
 		var cmd tea.Cmd
 		p.Key, cmd = p.Key.Update(msg)
+		p.syncKeyWidth()
 		cmds = append(cmds, cmd)
 	}
 
@@ -440,6 +440,23 @@ func (p CipherPane) frameView(content string) string {
 	}
 
 	return baseView
+}
+
+// syncKeyWidth keeps v1's key display: bubbles v2 needs a non-zero width to
+// draw the whole placeholder, but width 0 is intentional once the field holds a
+// key so the widget emits the full value and ansi.Hardwrap wraps it like v1.
+func (p *CipherPane) syncKeyWidth() {
+	if p.Key.Value() == "" {
+		innerWidth := LeftPanelWidth - 2
+		p.Key.SetWidth(innerWidth - lipgloss.Width(p.Key.Prompt) - 1)
+		return
+	}
+
+	p.Key.SetWidth(0)
+	// SetWidth does not re-layout the field; SetCursor recomputes the overflow
+	// offsets, without which a value set while the width was non-zero stays
+	// clipped instead of being emitted in full for Hardwrap.
+	p.Key.SetCursor(p.Key.Position())
 }
 
 // textareaFrame draws the border that v1 kept on the input textarea itself.
