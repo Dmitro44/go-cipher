@@ -40,7 +40,14 @@ func NewModel(tabs ...Tab) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.Tabs[m.ActiveTab].Pane.Init()
+	// Every pane is initialised, not only the visible one: a pane may need to
+	// probe the terminal at start-up (the image previews ask about the Kitty
+	// graphics protocol) and does that from Init.
+	cmds := make([]tea.Cmd, 0, len(m.Tabs))
+	for i := range m.Tabs {
+		cmds = append(cmds, m.Tabs[i].Pane.Init())
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -77,7 +84,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	var cmd tea.Cmd
 	m.Tabs[m.ActiveTab].Pane, cmd = m.Tabs[m.ActiveTab].Pane.Update(msg)
-	return m, cmd
+	cmds := []tea.Cmd{cmd}
+
+	// Panes that need terminal replies regardless of the open tab get the
+	// message too; the rest never see it, so widget messages cannot leak from
+	// one pane's components into another's.
+	for i := range m.Tabs {
+		if i == m.ActiveTab {
+			continue
+		}
+		bg, ok := m.Tabs[i].Pane.(BackgroundPane)
+		if !ok {
+			continue
+		}
+		m.Tabs[i].Pane, cmd = bg.BackgroundUpdate(msg)
+		cmds = append(cmds, cmd)
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() tea.View {
