@@ -2,7 +2,7 @@
 
 Terminal UI (Go + [Bubble Tea](https://github.com/charmbracelet/bubbletea)) for encrypting
 and decrypting text and files. Implements **GOST 28147-89** and **STB 34.101.31 (BelT)**,
-with an asymmetric tab for **Rabin**, a hash tab for
+with asymmetric tabs for **Rabin** and **EC ElGamal**, a hash tab for
 **GOST R 34.11-2012 (Streebog)** and **SHA-1**, and a digital-signature tab for
 **GOST R 34.10-2012**.
 
@@ -10,9 +10,10 @@ with an asymmetric tab for **Rabin**, a hash tab for
 
 ## Features
 
-- Five tabs: GOST 28147-89, STB 34.101.31 (BelT), Rabin, Hash, Signature
+- Six tabs: GOST 28147-89, STB 34.101.31 (BelT), Rabin, Hash, Signature, EC ElGamal
 - Symmetric modes: ECB, gamma (CTR), gamma with feedback (CFB), gamma with MAC (GOST only)
 - Asymmetric workflow: keypair generation, public-key encryption, private-key decryption
+- ElGamal on elliptic curves: message chunks mapped to curve points (Koblitz), randomized ciphertext
 - Hash workflow: Streebog-512, Streebog-256 and SHA-1 with an expected-value verdict and an avalanche check
 - Signature workflow: GOST R 34.10-2012 on the 256- and 512-bit curves, sign and verify modes with a verdict line
 - Private key is masked in its own field; `Ctrl+R` reveals it
@@ -34,6 +35,10 @@ with an asymmetric tab for **Rabin**, a hash tab for
 | Signature scheme | Curves |
 |---|---|
 | GOST R 34.10-2012 | 256-bit, 512-bit |
+
+| Asymmetric cipher | Parameters |
+|---|---|
+| EC ElGamal | 256-bit curve, 512-bit curve |
 
 ## Run
 

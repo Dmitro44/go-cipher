@@ -15,7 +15,7 @@ import (
 var (
 	// ErrUnsupportedKeySize — длина ключа или подписи не соответствует ни
 	// одному набору параметров.
-	ErrUnsupportedKeySize = errors.New("gost3410: unsupported key or signature size")
+	ErrUnsupportedKeySize = errors.New("cipher: unsupported key or signature size")
 )
 
 // Gost3410 — адаптер ГОСТ Р 34.10-2012 к интерфейсу SignatureScheme.
