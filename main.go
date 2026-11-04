@@ -19,6 +19,7 @@ func main() {
 	belt := cipher.NewBelt()
 	rabin := cipher.NewRabin()
 	signature := cipher.NewGost3410()
+	elgamal := cipher.NewElGamal()
 
 	m := ui.NewModel(
 		ui.Tab{Title: gost.Name(), Pane: cipherpane.NewCipherPane(gost)},
@@ -26,6 +27,7 @@ func main() {
 		ui.Tab{Title: rabin.Name(), Pane: asympane.NewAsymPane(rabin)},
 		ui.Tab{Title: "Hash", Pane: hashpane.NewHashPane()},
 		ui.Tab{Title: "Signature", Pane: signpane.NewSignPane(signature)},
+		ui.Tab{Title: elgamal.Name(), Pane: asympane.NewAsymPane(elgamal)},
 	)
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
