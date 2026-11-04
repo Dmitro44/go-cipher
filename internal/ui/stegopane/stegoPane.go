@@ -30,6 +30,7 @@ func NewStegoPane() StegoPane {
 		PreviewOriginal: newPicture(43),
 		PreviewStego:    newPicture(44),
 		PreviewDiff:     newPicture(45),
+		SaveFilename:    newSaveFilename(),
 		PaneKeymap:      newPaneKeymap(),
 	}
 	p.Width, p.Height = 80, 24
@@ -152,6 +153,16 @@ func (p StegoPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 			p.clearStatusCmd(),
 		)
 
+	case saveContainerMsg:
+		p.Busy = false
+		if msg.err != nil {
+			p.setError("Save failed: " + msg.err.Error())
+			cmds = append(cmds, p.clearStatusCmd())
+			break
+		}
+		p.setStatus("Container saved to " + msg.path)
+		cmds = append(cmds, p.clearStatusCmd())
+
 	case tea.KeyPressMsg:
 		p.enableKitty(&cmds)
 		return p.handleKey(msg, cmds)
@@ -193,6 +204,24 @@ func (p *StegoPane) enableKitty(cmds *[]tea.Cmd) {
 }
 
 func (p StegoPane) handleKey(msg tea.KeyPressMsg, cmds []tea.Cmd) (ui.Pane, tea.Cmd) {
+	if p.ShowSavePopup {
+		switch msg.String() {
+		case "esc":
+			p.ShowSavePopup = false
+			p.SaveFilename.Blur()
+			p.updateFocus()
+			return p, tea.Batch(cmds...)
+		case "enter":
+			cmds = append(cmds, p.saveContainer())
+			return p, tea.Batch(cmds...)
+		default:
+			var cmd tea.Cmd
+			p.SaveFilename, cmd = p.SaveFilename.Update(msg)
+			cmds = append(cmds, cmd)
+			return p, tea.Batch(cmds...)
+		}
+	}
+
 	if p.PickerOpen {
 		if msg.String() == "esc" {
 			p.PickerOpen = false
@@ -271,7 +300,23 @@ func (p StegoPane) handleKey(msg tea.KeyPressMsg, cmds []tea.Cmd) (ui.Pane, tea.
 			cmds = append(cmds, p.saveMessage())
 			p.forwardToPictures(msg, &cmds)
 			return p, tea.Batch(cmds...)
+		case FocusSaveImage:
+			cmds = append(cmds, p.saveContainerPrompt())
+			p.forwardToPictures(msg, &cmds)
+			return p, tea.Batch(cmds...)
 		}
+	}
+
+	switch {
+	case msg.String() == "esc" && p.Fullscreen != FullscreenNone:
+		p.Fullscreen = FullscreenNone
+		cmds = append(cmds, p.applyLayout(p.layout()))
+		p.forwardToPictures(msg, &cmds)
+		return p, tea.Batch(cmds...)
+	case key.Matches(msg, p.PaneKeymap.fullscreen) && p.Focus != FocusMessage:
+		cmds = append(cmds, p.cycleFullscreen())
+		p.forwardToPictures(msg, &cmds)
+		return p, tea.Batch(cmds...)
 	}
 
 	if p.Focus == FocusMessage {
@@ -284,9 +329,10 @@ func (p StegoPane) handleKey(msg tea.KeyPressMsg, cmds []tea.Cmd) (ui.Pane, tea.
 	return p, tea.Batch(cmds...)
 }
 
-// ConsumesQuit keeps Esc inside the pane while the file picker is open.
+// ConsumesQuit keeps Esc inside the pane while the file picker, the save popup
+// or a fullscreen preview owns the screen.
 func (p StegoPane) ConsumesQuit(msg tea.KeyMsg) bool {
-	return p.PickerOpen
+	return p.PickerOpen || p.ShowSavePopup || p.Fullscreen != FullscreenNone
 }
 
 func (p *StegoPane) forwardToPictures(msg tea.Msg, cmds *[]tea.Cmd) {
@@ -306,23 +352,46 @@ func (p *StegoPane) applyLayout(l Layout) tea.Cmd {
 	p.Message.SetHeight(l.TextareaHeight)
 	p.Filepicker.SetHeight(FilepickerHeight)
 
-	p.PreviewRows = l.PreviewRows
+	p.PreviewColumns = p.previewWidth(FullscreenOriginal, l)
+	p.PreviewRows = p.previewHeight(FullscreenOriginal, l)
 
-	if p.Mode == ModeExtract {
-		p.PreviewColumns = l.PanelWidth
-		return tea.Batch(
-			p.PreviewOriginal.SetSize(l.PanelWidth, l.PreviewRows),
-			p.PreviewStego.SetSize(0, 0),
-			p.PreviewDiff.SetSize(0, 0),
-		)
-	}
-
-	p.PreviewColumns = l.ColumnWidth
 	return tea.Batch(
-		p.PreviewOriginal.SetSize(l.ColumnWidth, l.PreviewRows),
-		p.PreviewStego.SetSize(l.ColumnWidth, l.PreviewRows),
-		p.PreviewDiff.SetSize(l.ColumnWidth, l.PreviewRows),
+		p.PreviewOriginal.SetSize(p.previewWidth(FullscreenOriginal, l), p.previewHeight(FullscreenOriginal, l)),
+		p.PreviewStego.SetSize(p.previewWidth(FullscreenStego, l), p.previewHeight(FullscreenStego, l)),
+		p.PreviewDiff.SetSize(p.previewWidth(FullscreenDiff, l), p.previewHeight(FullscreenDiff, l)),
 	)
+}
+
+// previewWidth reports the cell width of one preview for the current mode and
+// fullscreen state; 0 means "not on screen".
+func (p *StegoPane) previewWidth(kind FullscreenMode, l Layout) int {
+	if p.Fullscreen != FullscreenNone {
+		if p.Fullscreen == kind {
+			return l.PanelWidth
+		}
+		return 0
+	}
+	if p.Mode == ModeExtract {
+		if kind == FullscreenOriginal {
+			return l.PanelWidth
+		}
+		return 0
+	}
+	return l.ColumnWidth
+}
+
+// previewHeight is the vertical counterpart of previewWidth.
+func (p *StegoPane) previewHeight(kind FullscreenMode, l Layout) int {
+	if p.Fullscreen != FullscreenNone {
+		if p.Fullscreen == kind {
+			return l.FullscreenRows
+		}
+		return 0
+	}
+	if p.Mode == ModeExtract && kind != FullscreenOriginal {
+		return 0
+	}
+	return l.PreviewRows
 }
 
 // loadSource decodes the picked file off the UI goroutine: decoding a large
@@ -431,8 +500,74 @@ func (p *StegoPane) saveMessage() tea.Cmd {
 
 func (p *StegoPane) updateFocus() {
 	p.Message.Blur()
-	if p.Focus == FocusMessage {
+	p.SaveFilename.Blur()
+	if p.Focus == FocusMessage && !p.ShowSavePopup {
 		p.Message.Focus()
+	}
+}
+
+// cycleFullscreen moves through the previews: none → original → stego → diff →
+// none. It is offered only outside the message editor so that typing "f" into
+// the message keeps working.
+func (p *StegoPane) cycleFullscreen() tea.Cmd {
+	switch p.Fullscreen {
+	case FullscreenNone:
+		p.Fullscreen = FullscreenOriginal
+	case FullscreenOriginal:
+		p.Fullscreen = FullscreenStego
+	case FullscreenStego:
+		p.Fullscreen = FullscreenDiff
+	default:
+		p.Fullscreen = FullscreenNone
+	}
+	return p.applyLayout(p.layout())
+}
+
+// saveContainerPrompt opens the file-name popup with a sensible default next to
+// the source image.
+func (p *StegoPane) saveContainerPrompt() tea.Cmd {
+	if p.StegoImage == nil {
+		p.setError("Nothing to save yet: embed a message first")
+		return p.clearStatusCmd()
+	}
+
+	name := "stego.png"
+	if p.SelectedFile != "" {
+		base := strings.TrimSuffix(filepath.Base(p.SelectedFile), filepath.Ext(p.SelectedFile))
+		name = filepath.Join(filepath.Dir(p.SelectedFile), "stego-"+base+".png")
+	}
+
+	p.ShowSavePopup = true
+	p.SaveFilename.SetValue(name)
+	p.SaveFilename.CursorEnd()
+	p.SaveFilename.Focus()
+	p.Message.Blur()
+	return nil
+}
+
+// saveContainer writes the container image to the path from the popup, off the
+// UI goroutine because PNG encoding a full-size photo is slow.
+func (p *StegoPane) saveContainer() tea.Cmd {
+	path := strings.TrimSpace(p.SaveFilename.Value())
+	img := p.StegoImage
+	p.ShowSavePopup = false
+	p.SaveFilename.Blur()
+
+	if path == "" {
+		p.setError("File name is empty")
+		return p.clearStatusCmd()
+	}
+	if img == nil {
+		p.setError("Nothing to save yet: embed a message first")
+		return p.clearStatusCmd()
+	}
+
+	p.setStatus("Saving " + filepath.Base(path) + "…")
+	return func() tea.Msg {
+		if err := stego.WritePNG(path, img); err != nil {
+			return saveContainerMsg{err: err}
+		}
+		return saveContainerMsg{path: path}
 	}
 }
 
@@ -459,13 +594,49 @@ func (p StegoPane) clearStatusCmd() tea.Cmd {
 func (p StegoPane) View() string {
 	l := p.layout()
 
-	return lipgloss.JoinVertical(
+	body := lipgloss.JoinVertical(
 		lipgloss.Left,
 		p.sourceView(l),
 		p.messageView(l),
 		p.actionView(l),
 		p.previewView(l),
 	)
+
+	if p.Fullscreen != FullscreenNone {
+		body = lipgloss.JoinVertical(
+			lipgloss.Left,
+			p.sourceView(l),
+			p.actionView(l),
+			p.previewView(l),
+		)
+	}
+
+	if p.ShowSavePopup {
+		content := lipgloss.JoinVertical(
+			lipgloss.Left,
+			labelStyle.Render("SAVE CONTAINER IMAGE AS"),
+			"",
+			"File:",
+			p.SaveFilename.View(),
+			"",
+			mutedStyle.Render("Enter to save  •  Esc to cancel"),
+		)
+		popup := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("86")).
+			Padding(1, 2).
+			Width(70).
+			Render(content)
+		return lipgloss.Place(
+			p.Width, p.Height,
+			lipgloss.Center, lipgloss.Center,
+			popup,
+			lipgloss.WithWhitespaceChars(" "),
+			lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("237"))),
+		)
+	}
+
+	return body
 }
 
 func (p StegoPane) sourceView(l Layout) string {
@@ -569,7 +740,8 @@ func (p StegoPane) actionView(l Layout) string {
 		lipgloss.Top,
 		labelStyle.Render("MODE "), mode, "   ",
 		p.actionButton("RUN", p.Focus == FocusRun, buttonStyle), "  ",
-		p.actionButton("SAVE MESSAGE TO FILE", p.Focus == FocusSave, saveBtnStyle),
+		p.actionButton("SAVE CONTAINER", p.Focus == FocusSaveImage, saveBtnStyle), "  ",
+		p.actionButton("SAVE MESSAGE", p.Focus == FocusSave, saveBtnStyle),
 	)
 
 	return lipgloss.JoinVertical(
@@ -594,11 +766,25 @@ func (p StegoPane) hintLine(width int) string {
 		}
 		return style.Render(ansi.Truncate(p.Status, width, "…"))
 	}
-	hint := "Tab fields · Enter activate · Alt+D clear · Ctrl+D extracted→message · Esc quit"
+	hint := "Tab fields · Enter activate · f fullscreen · Alt+D clear · Ctrl+D extracted→message · Esc quit"
+	if p.Fullscreen != FullscreenNone {
+		hint = "f next preview · Esc back to the pane"
+	}
 	return mutedStyle.Render(ansi.Truncate(hint, width, "…"))
 }
 
 func (p StegoPane) previewView(l Layout) string {
+	if p.Fullscreen != FullscreenNone {
+		switch p.Fullscreen {
+		case FullscreenOriginal:
+			return p.previewColumn("ORIGINAL · f — next · Esc — back", p.OriginalImage, &p.PreviewOriginal, l.PanelWidth, l.FullscreenRows)
+		case FullscreenStego:
+			return p.previewColumn("STEGO · f — next · Esc — back", p.StegoImage, &p.PreviewStego, l.PanelWidth, l.FullscreenRows)
+		default:
+			return p.previewColumn("DIFF ×20 · f — next · Esc — back", p.DiffImage, &p.PreviewDiff, l.PanelWidth, l.FullscreenRows)
+		}
+	}
+
 	if p.Mode == ModeExtract {
 		return p.previewColumn("CONTAINER", p.OriginalImage, &p.PreviewOriginal, l.PanelWidth, l.PreviewRows)
 	}
