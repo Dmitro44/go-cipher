@@ -11,6 +11,7 @@ import (
 	"charm.land/bubbles/v2/filepicker"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 	"github.com/NimbleMarkets/ntcharts/v2/picture"
 )
@@ -49,10 +50,22 @@ func newPicture(kittyID int) picture.Model {
 	})
 }
 
+func newSaveFilename() textinput.Model {
+	ti := textinput.New()
+	ti.Placeholder = "stego.png"
+	ti.Prompt = "> "
+	ti.SetWidth(60)
+	styles := ti.Styles()
+	styles.Cursor.Color = cursorColor
+	ti.SetStyles(styles)
+	return ti
+}
+
 func newPaneKeymap() PaneKeymap {
 	return PaneKeymap{
-		next: key.NewBinding(key.WithKeys("tab")),
-		prev: key.NewBinding(key.WithKeys("shift+tab")),
+		fullscreen: key.NewBinding(key.WithKeys("f")),
+		next:       key.NewBinding(key.WithKeys("tab")),
+		prev:       key.NewBinding(key.WithKeys("shift+tab")),
 		clearMessage: key.NewBinding(
 			key.WithKeys("alt+d"),
 		),

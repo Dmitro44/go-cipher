@@ -9,6 +9,7 @@ import (
 	"charm.land/bubbles/v2/filepicker"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
 	"github.com/NimbleMarkets/ntcharts/v2/picture"
 )
 
@@ -23,11 +24,24 @@ const (
 	ModeExtract
 )
 
+// FullscreenMode selects which preview fills the whole pane; None keeps the
+// regular layout.
+type FullscreenMode int
+
+const (
+	FullscreenNone FullscreenMode = iota
+	FullscreenOriginal
+	FullscreenStego
+	FullscreenDiff
+)
+
 const (
 	FocusSource int = iota
 	FocusMessage
 	FocusMode
 	FocusRun
+	// The focus order follows the action bar from left to right.
+	FocusSaveImage
 	FocusSave
 	FocusCount
 )
@@ -36,6 +50,7 @@ type PaneKeymap = struct {
 	next, prev         key.Binding
 	clearMessage       key.Binding
 	extractedToMessage key.Binding
+	fullscreen         key.Binding
 }
 
 type StegoPane struct {
@@ -64,8 +79,16 @@ type StegoPane struct {
 	// Busy is set while a decode/embed/extract runs off the UI goroutine.
 	Busy bool
 	// KittyOn records that the previews were switched to the Kitty graphics
-	// protocol after the terminal probe confirmed support.
+	// protocol after the terminal probe confirmed support. When Kitty is off,
+	// a helper program translates the images into ANSI colour cells.
 	KittyOn bool
+	// Fullscreen shows one preview over the whole pane.
+	Fullscreen FullscreenMode
+
+	// ShowSavePopup owns the keyboard while the user picks a file name for
+	// the container image.
+	ShowSavePopup bool
+	SaveFilename  textinput.Model
 
 	StatusError bool
 	PaneKeymap  PaneKeymap
@@ -94,4 +117,11 @@ type extractMsg struct {
 	img     image.Image
 	payload []byte
 	err     error
+}
+
+// saveContainerMsg reports the result of writing the container image to a
+// user-chosen path.
+type saveContainerMsg struct {
+	path string
+	err  error
 }

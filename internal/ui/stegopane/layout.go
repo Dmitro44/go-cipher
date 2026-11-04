@@ -23,6 +23,8 @@ type Layout struct {
 
 	ColumnWidth int
 	PreviewRows int
+	// FullscreenRows is the cell height of a preview that fills the pane.
+	FullscreenRows int
 
 	TextareaWidth  int
 	TextareaHeight int
@@ -50,6 +52,7 @@ func NewLayout(width, height int, pickerOpen bool) Layout {
 		l.MessagePanelHeight - ActionBandHeight - 1
 	l.PreviewRows = max(available, MinPreviewRows)
 	l.PreviewHeight = l.PreviewRows + 1
+	l.FullscreenRows = max(height-PanelMargin-1, MinPreviewRows)
 
 	return l
 }
