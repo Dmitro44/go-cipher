@@ -52,12 +52,17 @@ func newMessageFilepicker() filepicker.Model {
 	return fp
 }
 
-func newPicture(kittyID int) picture.Model {
-	return picture.NewWithConfig(picture.Config{
+// newPicture returns a pointer so the pane copies (Update and View both work
+// on values) keep sharing one model: picture caches its rendered frame inside
+// the model, and a copy would rebuild it on every repaint — for a 4K image
+// that is megabytes of resampling per keystroke.
+func newPicture(kittyID int) *picture.Model {
+	model := picture.NewWithConfig(picture.Config{
 		KittyID:    kittyID,
 		Fit:        picture.FitContain,
 		Background: color.Black,
 	})
+	return &model
 }
 
 func newSaveFilename() textinput.Model {

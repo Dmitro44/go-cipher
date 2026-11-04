@@ -81,9 +81,9 @@ type StegoPane struct {
 	StegoImage    image.Image
 	DiffImage     image.Image
 
-	PreviewOriginal picture.Model
-	PreviewStego    picture.Model
-	PreviewDiff     picture.Model
+	PreviewOriginal *picture.Model
+	PreviewStego    *picture.Model
+	PreviewDiff     *picture.Model
 	PreviewColumns  int
 	PreviewRows     int
 

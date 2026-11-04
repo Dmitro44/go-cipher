@@ -13,7 +13,9 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 )
 
 // quantizationStep — шаг квантования QIM. Больше шаг — устойчивее бит к
@@ -159,45 +161,15 @@ func Embed(img image.Image, message []byte) (*image.RGBA, Stats, error) {
 	}
 
 	stego := image.NewRGBA(image.Rect(0, 0, width, height))
-	draw.Draw(stego, stego.Bounds(), img, bounds.Min, draw.Src)
+	source := toRGBA(img)
+	copy(stego.Pix, source.Pix)
 
-	bitIndex := 0
-	usedBlocks := 0
-
-	for blockY := 0; blockY < rows; blockY++ {
-		for blockX := 0; blockX < columns; blockX++ {
-			x0 := bounds.Min.X + blockX*blockSide
-			y0 := bounds.Min.Y + blockY*blockSide
-
-			original := readLumaBlock(img, x0, y0)
-			coefficients := forwardDCT(original)
-
-			usedInBlock := 0
-			for _, position := range payloadCoefficients {
-				if bitIndex >= len(bits) {
-					break
-				}
-				coefficients[position.u][position.v] = embedBit(
-					coefficients[position.u][position.v],
-					bits[bitIndex],
-				)
-				bitIndex++
-				usedInBlock++
-			}
-			if usedInBlock == 0 {
-				continue
-			}
-			usedBlocks++
-
-			rebuilt := inverseDCT(coefficients)
-			writeBlockWithDelta(stego, img, x0, y0, original, rebuilt)
-		}
-	}
+	usedBlocks := embedBlocks(source, stego, columns, rows, bits)
 
 	stats.UsedBlocks = usedBlocks
 	stats.ChangedBlocks = usedBlocks
-	stats.ChangedPixels, stats.MaxDelta, stats.MeanDelta = measureDifference(img, stego)
-	stats.PSNR = psnr(img, stego)
+	stats.ChangedPixels, stats.MaxDelta, stats.MeanDelta = measureDifference(source, stego)
+	stats.PSNR = psnr(source, stego)
 
 	if err := verifyRoundTrip(stego, message); err != nil {
 		return nil, stats, err
@@ -206,31 +178,79 @@ func Embed(img image.Image, message []byte) (*image.RGBA, Stats, error) {
 	return stego, stats, nil
 }
 
+// embedBlocks раскладывает биты по блокам слева направо и сверху вниз. Блоки
+// друг от друга не зависят, поэтому строки блоков делятся на полосы, и каждая
+// полоса обрабатывается своей горутиной: номер блока задаёт его биты, так что
+// синхронизация не нужна. На 4K это сокращает время с секунд до десятых.
+func embedBlocks(source, stego *image.RGBA, columns, rows int, bits []byte) int {
+	workers := blockWorkers(rows)
+	used := make([]int, workers)
+
+	var wg sync.WaitGroup
+	for worker := 0; worker < workers; worker++ {
+		start := rows * worker / workers
+		end := rows * (worker + 1) / workers
+
+		wg.Add(1)
+		go func(slot, start, end int) {
+			defer wg.Done()
+			used[slot] = embedBand(source, stego, columns, start, end, bits)
+		}(worker, start, end)
+	}
+	wg.Wait()
+
+	total := 0
+	for _, count := range used {
+		total += count
+	}
+	return total
+}
+
+func embedBand(source, stego *image.RGBA, columns, startRow, endRow int, bits []byte) int {
+	used := 0
+	for blockY := startRow; blockY < endRow; blockY++ {
+		for blockX := 0; blockX < columns; blockX++ {
+			bitIndex := 2 * (blockY*columns + blockX)
+			if bitIndex >= len(bits) {
+				return used
+			}
+
+			x0, y0 := blockX*blockSide, blockY*blockSide
+			original := readLumaBlock(source, x0, y0)
+			coefficients := forwardDCT(original)
+
+			for i, position := range payloadCoefficients {
+				if bitIndex+i >= len(bits) {
+					break
+				}
+				coefficients[position.u][position.v] = embedBit(
+					coefficients[position.u][position.v], bits[bitIndex+i],
+				)
+			}
+
+			rebuilt := inverseDCT(coefficients)
+			writeBlockDelta(stego, source, x0, y0, original, rebuilt)
+			used++
+		}
+	}
+	return used
+}
+
 // Extract читает сообщение из коэффициентов изображения.
 func Extract(img image.Image) ([]byte, error) {
 	if img == nil {
 		return nil, ErrNilImage
 	}
 
-	bounds := img.Bounds()
-	columns, rows := bounds.Dx()/blockSide, bounds.Dy()/blockSide
+	source := toRGBA(img)
+	columns, rows := source.Bounds().Dx()/blockSide, source.Bounds().Dy()/blockSide
 	capacity := 2 * columns * rows
 	if capacity < headerSize*8 {
 		return nil, ErrNoPayload
 	}
 
-	bits := make([]byte, 0, capacity)
-	for blockY := 0; blockY < rows; blockY++ {
-		for blockX := 0; blockX < columns; blockX++ {
-			x0 := bounds.Min.X + blockX*blockSide
-			y0 := bounds.Min.Y + blockY*blockSide
-
-			coefficients := forwardDCT(readLumaBlock(img, x0, y0))
-			for _, position := range payloadCoefficients {
-				bits = append(bits, readBit(coefficients[position.u][position.v]))
-			}
-		}
-	}
+	bits := make([]byte, capacity)
+	extractBits(source, columns, rows, bits)
 
 	if !bytes.Equal(bitsToBytes(bits[:len(magic)*8]), magic[:]) {
 		return nil, ErrNoPayload
@@ -297,6 +317,12 @@ func verifyRoundTrip(stego *image.RGBA, message []byte) error {
 
 	extracted, err := Extract(decoded)
 	if err != nil {
+		if errors.Is(err, ErrNoPayload) {
+			return fmt.Errorf(
+				"%w: areas of pure black or white clip the brightness change; try a picture with more headroom",
+				ErrSelfCheck,
+			)
+		}
 		return fmt.Errorf("%w: extraction after saving failed: %w", ErrSelfCheck, err)
 	}
 	if !bytes.Equal(extracted, message) {
@@ -334,39 +360,103 @@ func bitsToBytes(bits []byte) []byte {
 	return out
 }
 
-// Luma переводит пиксель в яркость по формуле JPEG. Одинаковая формула
-// используется и при встраивании, и при извлечении.
-func Luma(pixel color.Color) float64 {
-	value := color.NRGBAModel.Convert(pixel).(color.NRGBA)
-	return 0.299*float64(value.R) + 0.587*float64(value.G) + 0.114*float64(value.B)
+// quote: helpers below work on *image.RGBA.
+
+// toRGBA приводит изображение к RGBA: дальше пиксели читаются и пишутся по
+// слайсу Pix, без интерфейсных вызовов At/Set на каждый пиксель.
+func toRGBA(img image.Image) *image.RGBA {
+	if rgba, ok := img.(*image.RGBA); ok {
+		return rgba
+	}
+	bounds := img.Bounds()
+	out := image.NewRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
+	draw.Draw(out, out.Bounds(), img, bounds.Min, draw.Src)
+	return out
 }
 
-func readLumaBlock(img image.Image, x0, y0 int) [blockSide][blockSide]float64 {
+// blockWorkers ограничивает число горутин числом полос и ядер.
+func blockWorkers(rows int) int {
+	workers := runtime.NumCPU()
+	if workers > rows {
+		workers = rows
+	}
+	if workers < 1 {
+		workers = 1
+	}
+	return workers
+}
+
+// extractBits читает биты из коэффициентов блоков — та же разбивка на полосы,
+// что и при встраивании, но только чтение.
+func extractBits(source *image.RGBA, columns, rows int, bits []byte) {
+	workers := blockWorkers(rows)
+
+	var wg sync.WaitGroup
+	for worker := 0; worker < workers; worker++ {
+		start := rows * worker / workers
+		end := rows * (worker + 1) / workers
+
+		wg.Add(1)
+		go func(start, end int) {
+			defer wg.Done()
+			for blockY := start; blockY < end; blockY++ {
+				for blockX := 0; blockX < columns; blockX++ {
+					coefficients := forwardDCT(readLumaBlock(source, blockX*blockSide, blockY*blockSide))
+					index := 2 * (blockY*columns + blockX)
+					for i, position := range payloadCoefficients {
+						bits[index+i] = readBit(coefficients[position.u][position.v])
+					}
+				}
+			}
+		}(start, end)
+	}
+	wg.Wait()
+}
+
+// readLumaBlock читает блок 8×8 и переводит пиксели в яркость.
+func readLumaBlock(img *image.RGBA, x0, y0 int) [blockSide][blockSide]float64 {
 	var block [blockSide][blockSide]float64
 	for y := 0; y < blockSide; y++ {
+		offset := img.PixOffset(x0, y0+y)
 		for x := 0; x < blockSide; x++ {
-			block[y][x] = Luma(img.At(x0+x, y0+y))
+			p := offset + 4*x
+			block[y][x] = lumaRGB(img.Pix[p], img.Pix[p+1], img.Pix[p+2])
 		}
 	}
 	return block
 }
 
-// writeBlockWithDelta добавляет к R, G и B одну и ту же разность яркостей.
+// writeBlockDelta добавляет к R, G и B одну и ту же разность яркостей.
 // Прибавка ко всем каналам сохраняет оттенок, а яркость результата
 // совпадает с восстановленной яркостью блока с точностью до округления.
-func writeBlockWithDelta(stego *image.RGBA, source image.Image, x0, y0 int, original, rebuilt [blockSide][blockSide]float64) {
+func writeBlockDelta(stego, source *image.RGBA, x0, y0 int, original, rebuilt [blockSide][blockSide]float64) {
 	for y := 0; y < blockSide; y++ {
+		offset := source.PixOffset(x0, y0+y)
 		for x := 0; x < blockSide; x++ {
+			p := offset + 4*x
 			delta := rebuilt[y][x] - original[y][x]
-			pixel := color.NRGBAModel.Convert(source.At(x0+x, y0+y)).(color.NRGBA)
-			stego.SetRGBA(x0+x, y0+y, color.RGBA{
-				R: clampChannel(float64(pixel.R) + delta),
-				G: clampChannel(float64(pixel.G) + delta),
-				B: clampChannel(float64(pixel.B) + delta),
-				A: pixel.A,
-			})
+			stego.Pix[p] = clampChannel(float64(source.Pix[p]) + delta)
+			stego.Pix[p+1] = clampChannel(float64(source.Pix[p+1]) + delta)
+			stego.Pix[p+2] = clampChannel(float64(source.Pix[p+2]) + delta)
+			stego.Pix[p+3] = source.Pix[p+3]
 		}
 	}
+}
+
+func lumaRGB(r, g, b uint8) float64 {
+	return 0.299*float64(r) + 0.587*float64(g) + 0.114*float64(b)
+}
+
+// Luma переводит пиксель в яркость по формуле JPEG. Одинаковая формула
+// используется и при встраивании, и при извлечении.
+func Luma(pixel color.Color) float64 {
+	value := color.NRGBAModel.Convert(pixel).(color.NRGBA)
+	return lumaRGB(value.R, value.G, value.B)
+}
+
+func lumaRGBFrom(pixel color.Color) float64 {
+	value := color.NRGBAModel.Convert(pixel).(color.NRGBA)
+	return lumaRGB(value.R, value.G, value.B)
 }
 
 func clampChannel(value float64) uint8 {
@@ -378,57 +468,4 @@ func clampChannel(value float64) uint8 {
 		return 255
 	}
 	return uint8(rounded)
-}
-
-func measureDifference(original, stego image.Image) (changedPixels int, maxDelta, meanDelta float64) {
-	bounds := original.Bounds()
-	total := bounds.Dx() * bounds.Dy()
-	if total == 0 {
-		return 0, 0, 0
-	}
-
-	var sum float64
-	for y := range bounds.Dy() {
-		for x := range bounds.Dx() {
-			before := original.At(bounds.Min.X+x, bounds.Min.Y+y)
-			after := stego.At(bounds.Min.X+x, bounds.Min.Y+y)
-			if color.NRGBAModel.Convert(before) != color.NRGBAModel.Convert(after) {
-				changedPixels++
-			}
-			delta := math.Abs(Luma(after) - Luma(before))
-			sum += delta
-			if delta > maxDelta {
-				maxDelta = delta
-			}
-		}
-	}
-
-	return changedPixels, maxDelta, sum / float64(total)
-}
-
-func psnr(original, stego image.Image) float64 {
-	bounds := original.Bounds()
-	var squaredError float64
-
-	for y := range bounds.Dy() {
-		for x := range bounds.Dx() {
-			before := color.NRGBAModel.Convert(original.At(bounds.Min.X+x, bounds.Min.Y+y)).(color.NRGBA)
-			after := color.NRGBAModel.Convert(stego.At(bounds.Min.X+x, bounds.Min.Y+y)).(color.NRGBA)
-
-			dr := float64(before.R) - float64(after.R)
-			dg := float64(before.G) - float64(after.G)
-			db := float64(before.B) - float64(after.B)
-			squaredError += dr*dr + dg*dg + db*db
-		}
-	}
-
-	samples := float64(bounds.Dx() * bounds.Dy() * 3)
-	if samples == 0 {
-		return 0
-	}
-	mse := squaredError / samples
-	if mse == 0 {
-		return math.Inf(1)
-	}
-	return 10 * math.Log10(255*255/mse)
 }
