@@ -16,11 +16,13 @@ func main() {
 	gost := cipher.NewGost()
 	belt := cipher.NewBelt()
 	rabin := cipher.NewRabin()
+	mceliece := cipher.NewMcEliece()
 
 	m := ui.NewModel(
 		ui.Tab{Title: gost.Name(), Pane: cipherpane.NewCipherPane(gost)},
 		ui.Tab{Title: belt.Name(), Pane: cipherpane.NewCipherPane(belt)},
 		ui.Tab{Title: rabin.Name(), Pane: asympane.NewAsymPane(rabin)},
+		ui.Tab{Title: mceliece.Name(), Pane: asympane.NewAsymPane(mceliece)},
 	)
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {

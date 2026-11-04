@@ -39,4 +39,5 @@ type PaneKeymap = struct {
 	copyOutput, clearInput key.Binding
 	clearKey               key.Binding
 	generate, reveal       key.Binding
+	exportKeys, importKeys key.Binding
 }
