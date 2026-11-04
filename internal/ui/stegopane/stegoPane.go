@@ -153,6 +153,7 @@ func (p StegoPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 		)
 
 	case tea.KeyPressMsg:
+		p.enableKitty(&cmds)
 		return p.handleKey(msg, cmds)
 
 	default:
@@ -161,6 +162,16 @@ func (p StegoPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
+	p.forwardToPictures(msg, &cmds)
+	p.enableKitty(&cmds)
+	return p, tea.Batch(cmds...)
+}
+
+// BackgroundUpdate feeds messages to the previews while another tab is open.
+// The Kitty probe answers once, right after start, and the picture models are
+// the only place that records the answer, so they have to see it happen.
+func (p StegoPane) BackgroundUpdate(msg tea.Msg) (ui.Pane, tea.Cmd) {
+	var cmds []tea.Cmd
 	p.forwardToPictures(msg, &cmds)
 	p.enableKitty(&cmds)
 	return p, tea.Batch(cmds...)
