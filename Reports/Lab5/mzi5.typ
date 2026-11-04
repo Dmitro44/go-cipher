@@ -344,8 +344,4 @@ $K = "LPS"(0^(512))$, а также значения на выходах рау�
   #stp2024.listing[SHA-1][
     #raw(read("code/_sha1.go"))
   ]
-
-  #stp2024.listing[Вкладка Hash][
-    #raw(read("code/_hashpane.go"))
-  ]
 ]
