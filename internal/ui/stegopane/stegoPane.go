@@ -139,6 +139,7 @@ func (p StegoPane) handleKey(msg tea.KeyPressMsg, cmds []tea.Cmd) (ui.Pane, tea.
 			} else {
 				p.Mode = ModeEmbed
 			}
+			cmds = append(cmds, p.applyLayout(p.layout()))
 			p.forwardToPictures(msg, &cmds)
 			return p, tea.Batch(cmds...)
 		case FocusRun:
@@ -184,9 +185,18 @@ func (p *StegoPane) applyLayout(l Layout) tea.Cmd {
 	p.Message.SetHeight(l.TextareaHeight)
 	p.Filepicker.SetHeight(FilepickerHeight)
 
-	p.PreviewColumns = l.ColumnWidth
 	p.PreviewRows = l.PreviewRows
 
+	if p.Mode == ModeExtract {
+		p.PreviewColumns = l.PanelWidth
+		return tea.Batch(
+			p.PreviewOriginal.SetSize(l.PanelWidth, l.PreviewRows),
+			p.PreviewStego.SetSize(0, 0),
+			p.PreviewDiff.SetSize(0, 0),
+		)
+	}
+
+	p.PreviewColumns = l.ColumnWidth
 	return tea.Batch(
 		p.PreviewOriginal.SetSize(l.ColumnWidth, l.PreviewRows),
 		p.PreviewStego.SetSize(l.ColumnWidth, l.PreviewRows),
@@ -511,31 +521,35 @@ func (p StegoPane) hintLine(width int) string {
 }
 
 func (p StegoPane) previewView(l Layout) string {
+	if p.Mode == ModeExtract {
+		return p.previewColumn("CONTAINER", p.OriginalImage, &p.PreviewOriginal, l.PanelWidth, l.PreviewRows)
+	}
+
 	return lipgloss.JoinHorizontal(
 		lipgloss.Top,
-		p.previewColumn("ORIGINAL", p.OriginalImage, &p.PreviewOriginal, l),
+		p.previewColumn("ORIGINAL", p.OriginalImage, &p.PreviewOriginal, l.ColumnWidth, l.PreviewRows),
 		"  ",
-		p.previewColumn("STEGO", p.StegoImage, &p.PreviewStego, l),
+		p.previewColumn("STEGO", p.StegoImage, &p.PreviewStego, l.ColumnWidth, l.PreviewRows),
 		"  ",
-		p.previewColumn("DIFF ×20", p.DiffImage, &p.PreviewDiff, l),
+		p.previewColumn("DIFF ×20", p.DiffImage, &p.PreviewDiff, l.ColumnWidth, l.PreviewRows),
 	)
 }
 
-func (p StegoPane) previewColumn(label string, img image.Image, model *picture.Model, l Layout) string {
+func (p StegoPane) previewColumn(label string, img image.Image, model *picture.Model, width, rows int) string {
 	header := labelStyle.Render(label)
 	if img != nil {
 		bounds := img.Bounds()
 		header += mutedStyle.Render(fmt.Sprintf(" %d×%d", bounds.Dx(), bounds.Dy()))
 	}
-	header = ansi.Truncate(header, l.ColumnWidth, "…")
-	header = lipgloss.NewStyle().Width(l.ColumnWidth).Render(header)
+	header = ansi.Truncate(header, width, "…")
+	header = lipgloss.NewStyle().Width(width).Render(header)
 
 	content := model.View().Content
 	if img == nil || content == "" {
 		content = mutedStyle.Render("—")
 	}
 
-	return header + "\n" + padBlock(content, l.PreviewRows)
+	return header + "\n" + padBlock(content, rows)
 }
 
 func padBlock(content string, height int) string {
