@@ -1,6 +1,7 @@
 package stegopane
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"os"
@@ -26,9 +27,9 @@ func NewStegoPane() StegoPane {
 		Message:         newMessageTextarea(),
 		Filepicker:      newFilepicker(),
 		Mode:            ModeEmbed,
-		PreviewOriginal: newPicture(),
-		PreviewStego:    newPicture(),
-		PreviewDiff:     newPicture(),
+		PreviewOriginal: newPicture(43),
+		PreviewStego:    newPicture(44),
+		PreviewDiff:     newPicture(45),
 		PaneKeymap:      newPaneKeymap(),
 	}
 	p.Width, p.Height = 80, 24
@@ -38,7 +39,12 @@ func NewStegoPane() StegoPane {
 }
 
 func (p StegoPane) Init() tea.Cmd {
-	return p.Filepicker.Init()
+	// tmux hides the outer terminal's environment, so the Kitty probe has to
+	// travel through the passthrough wrapper when we run inside a session.
+	if os.Getenv("TMUX") != "" {
+		picture.SetTmuxPassthrough(true)
+	}
+	return tea.Batch(p.Filepicker.Init(), picture.QueryKittySupport())
 }
 
 func (p StegoPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
@@ -58,6 +64,94 @@ func (p StegoPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 			p.StatusError = false
 		}
 
+	case loadMsg:
+		p.Busy = false
+		if msg.err != nil {
+			p.SelectedFile = ""
+			p.OriginalImage = nil
+			p.StegoImage = nil
+			p.DiffImage = nil
+			p.Container = ""
+			p.LastExtracted = nil
+			p.HasExtracted = false
+			p.Stats = stego.Stats{}
+			p.setError("Cannot open image: " + msg.err.Error())
+			cmds = append(cmds,
+				p.PreviewOriginal.SetImage(nil),
+				p.PreviewStego.SetImage(nil),
+				p.PreviewDiff.SetImage(nil),
+				p.clearStatusCmd(),
+			)
+			break
+		}
+		p.SelectedFile = msg.path
+		p.OriginalImage = msg.img
+		p.StegoImage = nil
+		p.DiffImage = nil
+		p.Container = ""
+		p.LastExtracted = nil
+		p.HasExtracted = false
+		p.Stats = stego.Stats{CapacityBits: stego.Capacity(msg.img)}
+		p.setStatus(fmt.Sprintf(
+			"Loaded %s · capacity %d B",
+			filepath.Base(msg.path), stego.Capacity(msg.img)/8,
+		))
+		cmds = append(cmds,
+			p.PreviewOriginal.SetImage(msg.img),
+			p.PreviewStego.SetImage(nil),
+			p.PreviewDiff.SetImage(nil),
+			p.clearStatusCmd(),
+		)
+
+	case embedMsg:
+		p.Busy = false
+		if msg.err != nil {
+			p.setError("Embedding failed: " + msg.err.Error())
+			cmds = append(cmds, p.clearStatusCmd())
+			break
+		}
+		p.OriginalImage = msg.img
+		p.StegoImage = msg.container
+		p.DiffImage = msg.diff
+		p.Stats = msg.stats
+		p.Container = msg.path
+		p.setStatus(fmt.Sprintf(
+			"Embedded %d B into %s · PSNR %.2f dB · verified",
+			msg.size, filepath.Base(msg.path), msg.stats.PSNR,
+		))
+		cmds = append(cmds,
+			p.PreviewOriginal.SetImage(msg.img),
+			p.PreviewStego.SetImage(msg.container),
+			p.PreviewDiff.SetImage(msg.diff),
+			p.clearStatusCmd(),
+		)
+
+	case extractMsg:
+		p.Busy = false
+		if msg.err != nil {
+			p.setError("Extraction failed: " + msg.err.Error())
+			cmds = append(cmds, p.clearStatusCmd())
+			break
+		}
+		p.LastExtracted = msg.payload
+		p.HasExtracted = true
+		p.Message.SetValue(string(msg.payload))
+		p.Message.CursorEnd()
+		p.OriginalImage = msg.img
+		p.StegoImage = nil
+		p.DiffImage = nil
+		p.Stats = stego.Stats{CapacityBits: stego.Capacity(msg.img)}
+		p.setStatus(fmt.Sprintf(
+			"Extracted %d B from %s",
+			len(msg.payload), filepath.Base(p.SelectedFile),
+		))
+		cmds = append(cmds,
+			p.PreviewOriginal.SetImage(msg.img),
+			p.PreviewStego.SetImage(nil),
+			p.PreviewDiff.SetImage(nil),
+			p.clearStatusCmd(),
+		)
+
 	case tea.KeyPressMsg:
 		return p.handleKey(msg, cmds)
 
@@ -68,7 +162,23 @@ func (p StegoPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 	}
 
 	p.forwardToPictures(msg, &cmds)
+	p.enableKitty(&cmds)
 	return p, tea.Batch(cmds...)
+}
+
+// enableKitty switches the previews to the Kitty graphics protocol once the
+// terminal probe has confirmed support. Until then (and on terminals without
+// it) the previews stay in the universal half-block mode.
+func (p *StegoPane) enableKitty(cmds *[]tea.Cmd) {
+	if p.KittyOn || picture.KittySupported() != picture.KittyCapabilitySupported {
+		return
+	}
+	p.KittyOn = true
+	*cmds = append(*cmds,
+		p.PreviewOriginal.Toggle(),
+		p.PreviewStego.Toggle(),
+		p.PreviewDiff.Toggle(),
+	)
 }
 
 func (p StegoPane) handleKey(msg tea.KeyPressMsg, cmds []tea.Cmd) (ui.Pane, tea.Cmd) {
@@ -204,48 +314,22 @@ func (p *StegoPane) applyLayout(l Layout) tea.Cmd {
 	)
 }
 
+// loadSource decodes the picked file off the UI goroutine: decoding a large
+// JPEG plus the capacity scan takes long enough to freeze the interface if it
+// ran inside Update.
 func (p *StegoPane) loadSource(path string) tea.Cmd {
-	img, err := stego.DecodeFile(path)
-	if err != nil {
-		p.SelectedFile = ""
-		p.OriginalImage = nil
-		p.StegoImage = nil
-		p.DiffImage = nil
-		p.Container = ""
-		p.LastExtracted = nil
-		p.HasExtracted = false
-		p.Stats = stego.Stats{}
-		p.setError("Cannot open image: " + err.Error())
-		return tea.Batch(
-			p.PreviewOriginal.SetImage(nil),
-			p.PreviewStego.SetImage(nil),
-			p.PreviewDiff.SetImage(nil),
-			p.clearStatusCmd(),
-		)
+	p.Busy = true
+	p.setStatus("Opening " + filepath.Base(path) + "…")
+	return func() tea.Msg {
+		img, err := stego.DecodeFile(path)
+		return loadMsg{path: path, img: img, err: err}
 	}
-
-	p.SelectedFile = path
-	p.OriginalImage = img
-	p.StegoImage = nil
-	p.DiffImage = nil
-	p.Container = ""
-	p.LastExtracted = nil
-	p.HasExtracted = false
-	p.Stats = stego.Stats{CapacityBits: stego.Capacity(img)}
-	p.setStatus(fmt.Sprintf(
-		"Loaded %s · capacity %d B",
-		filepath.Base(path), stego.Capacity(img)/8,
-	))
-
-	return tea.Batch(
-		p.PreviewOriginal.SetImage(img),
-		p.PreviewStego.SetImage(nil),
-		p.PreviewDiff.SetImage(nil),
-		p.clearStatusCmd(),
-	)
 }
 
 func (p *StegoPane) run() tea.Cmd {
+	if p.Busy {
+		return nil
+	}
 	if p.SelectedFile == "" {
 		p.setError("Select a source image first: Enter on SOURCE")
 		return p.clearStatusCmd()
@@ -257,76 +341,59 @@ func (p *StegoPane) run() tea.Cmd {
 	return p.runEmbed()
 }
 
+// runEmbed does the whole embedding pipeline in a goroutine: decoding, the DCT
+// pass, writing the container and building the difference preview. Everything
+// that touches pane state is left to the embedMsg handler.
 func (p *StegoPane) runEmbed() tea.Cmd {
-	img, err := stego.DecodeFile(p.SelectedFile)
-	if err != nil {
-		p.setError("Cannot read source: " + err.Error())
-		return p.clearStatusCmd()
-	}
-
+	path := p.SelectedFile
 	message := []byte(p.Message.Value())
-	container, stats, err := stego.Embed(img, message)
-	if err != nil {
-		p.setError("Embedding failed: " + err.Error())
-		return p.clearStatusCmd()
+	p.Busy = true
+	p.setStatus(fmt.Sprintf("Embedding %d B…", len(message)))
+
+	return func() tea.Msg {
+		img, err := stego.DecodeFile(path)
+		if err != nil {
+			return embedMsg{err: errors.New("cannot read source: " + err.Error())}
+		}
+
+		container, stats, err := stego.Embed(img, message)
+		if err != nil {
+			return embedMsg{err: err}
+		}
+
+		out := stego.OutputPath(path)
+		if err := stego.WritePNG(out, container); err != nil {
+			return embedMsg{err: errors.New("cannot save container: " + err.Error())}
+		}
+
+		return embedMsg{
+			img:       img,
+			container: container,
+			diff:      differenceImage(img, container, diffGain),
+			stats:     stats,
+			path:      out,
+			size:      len(message),
+		}
 	}
-
-	path := stego.OutputPath(p.SelectedFile)
-	if err := stego.WritePNG(path, container); err != nil {
-		p.setError("Cannot save container: " + err.Error())
-		return p.clearStatusCmd()
-	}
-
-	p.OriginalImage = img
-	p.StegoImage = container
-	p.DiffImage = differenceImage(img, container, diffGain)
-	p.Stats = stats
-	p.Container = path
-	p.setStatus(fmt.Sprintf(
-		"Embedded %d B into %s · PSNR %.2f dB · verified",
-		len(message), filepath.Base(path), stats.PSNR,
-	))
-
-	return tea.Batch(
-		p.PreviewOriginal.SetImage(img),
-		p.PreviewStego.SetImage(container),
-		p.PreviewDiff.SetImage(p.DiffImage),
-		p.clearStatusCmd(),
-	)
 }
 
 func (p *StegoPane) runExtract() tea.Cmd {
-	img, err := stego.DecodeFile(p.SelectedFile)
-	if err != nil {
-		p.setError("Cannot read source: " + err.Error())
-		return p.clearStatusCmd()
+	path := p.SelectedFile
+	p.Busy = true
+	p.setStatus("Extracting…")
+
+	return func() tea.Msg {
+		img, err := stego.DecodeFile(path)
+		if err != nil {
+			return extractMsg{err: errors.New("cannot read source: " + err.Error())}
+		}
+
+		payload, err := stego.Extract(img)
+		if err != nil {
+			return extractMsg{err: err}
+		}
+		return extractMsg{img: img, payload: payload}
 	}
-
-	payload, err := stego.Extract(img)
-	if err != nil {
-		p.setError("Extraction failed: " + err.Error())
-		return p.clearStatusCmd()
-	}
-
-	p.LastExtracted = payload
-	p.HasExtracted = true
-	p.Message.SetValue(string(payload))
-	p.Message.CursorEnd()
-	p.OriginalImage = img
-	p.StegoImage = nil
-	p.DiffImage = nil
-	p.Stats = stego.Stats{CapacityBits: stego.Capacity(img)}
-	p.setStatus(fmt.Sprintf(
-		"Extracted %d B from %s",
-		len(payload), filepath.Base(p.SelectedFile),
-	))
-
-	return tea.Batch(
-		p.PreviewOriginal.SetImage(img),
-		p.PreviewStego.SetImage(nil),
-		p.PreviewDiff.SetImage(nil),
-		p.clearStatusCmd(),
-	)
 }
 
 func (p *StegoPane) saveMessage() tea.Cmd {

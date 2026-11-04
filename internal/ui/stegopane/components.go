@@ -41,8 +41,9 @@ func newFilepicker() filepicker.Model {
 	return fp
 }
 
-func newPicture() picture.Model {
+func newPicture(kittyID int) picture.Model {
 	return picture.NewWithConfig(picture.Config{
+		KittyID:    kittyID,
 		Fit:        picture.FitContain,
 		Background: color.Black,
 	})
