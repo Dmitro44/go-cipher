@@ -1,6 +1,6 @@
 package asympane
 
-import "github.com/charmbracelet/bubbles/key"
+import "charm.land/bubbles/v2/key"
 
 // statusMsg clears the pane Status after a short delay. It carries the text it
 // was scheduled for so an older timer cannot wipe a newer message.

@@ -3,20 +3,20 @@ package cipherpane
 import (
 	"os"
 
-	"github.com/charmbracelet/bubbles/filepicker"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
+	"charm.land/bubbles/v2/filepicker"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
 )
 
 func newTextarea(placeholder string) textarea.Model {
 	ta := textarea.New()
-	ta.Cursor.Style = cursorStyle
 	ta.Prompt = ""
 	ta.Placeholder = placeholder
 	ta.ShowLineNumbers = false
-	ta.FocusedStyle.Base = focusedBorderStyle
-	ta.BlurredStyle.Base = blurredBorderStyle
+	styles := ta.Styles()
+	styles.Cursor.Color = cursorColor
+	ta.SetStyles(styles)
 	ta.Focus()
 
 	return ta
@@ -27,8 +27,9 @@ func newOutputTextarea(placeholder string) textarea.Model {
 	ta.Prompt = ""
 	ta.Placeholder = placeholder
 	ta.ShowLineNumbers = false
-	ta.FocusedStyle.Base = focusedBorderStyle
-	ta.BlurredStyle.Base = blurredBorderStyle
+	styles := ta.Styles()
+	styles.Cursor.Color = cursorColor
+	ta.SetStyles(styles)
 
 	return ta
 }
@@ -36,7 +37,9 @@ func newOutputTextarea(placeholder string) textarea.Model {
 func newTextinput(placeholder string) textinput.Model {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
-	ti.Cursor.Style = cursorStyle
+	styles := ti.Styles()
+	styles.Cursor.Color = cursorColor
+	ti.SetStyles(styles)
 	return ti
 }
 

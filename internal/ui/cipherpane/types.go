@@ -1,6 +1,6 @@
 package cipherpane
 
-import "github.com/charmbracelet/bubbles/key"
+import "charm.land/bubbles/v2/key"
 
 // statusMsg clears the pane Status after a short delay
 type statusMsg string

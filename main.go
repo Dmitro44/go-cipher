@@ -9,7 +9,7 @@ import (
 	"go-cipher/internal/ui/asympane"
 	"go-cipher/internal/ui/cipherpane"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func main() {
@@ -23,10 +23,7 @@ func main() {
 		ui.Tab{Title: rabin.Name(), Pane: asympane.NewAsymPane(rabin)},
 	)
 
-	if _, err := tea.NewProgram(
-		m,
-		tea.WithAltScreen(),
-	).Run(); err != nil {
+	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Printf("error: %s", err)
 		os.Exit(1)
 	}

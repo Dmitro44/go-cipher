@@ -1,6 +1,6 @@
 package cipherpane
 
-import "github.com/charmbracelet/lipgloss"
+import "charm.land/lipgloss/v2"
 
 var (
 	focusedBorderStyle = lipgloss.NewStyle().
@@ -11,7 +11,7 @@ var (
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(lipgloss.Color("237"))
 
-	cursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("212"))
+	cursorColor = lipgloss.Color("212")
 
 	labelStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("99")).
@@ -38,5 +38,5 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("86")).
 			Padding(1, 2).
-			Width(40)
+			Width(42) // lipgloss v2 sizes the whole block, border included.
 )

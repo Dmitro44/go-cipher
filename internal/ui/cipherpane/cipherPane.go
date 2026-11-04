@@ -10,12 +10,12 @@ import (
 	"go-cipher/internal/cipher"
 	"go-cipher/internal/ui"
 
-	"github.com/charmbracelet/bubbles/filepicker"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/filepicker"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -60,19 +60,25 @@ func (p CipherPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		p.Width, p.Height = msg.Width, msg.Height
 
+		// The input border is drawn by the view, so the widget itself gets the
+		// inner width; the output stays borderless like in v1.
 		layout := NewLayout(msg.Width, msg.Height)
-		p.Input.SetWidth(layout.TextareaInputWidth)
+		p.Input.SetWidth(layout.TextareaInputWidth - 2)
 		p.Input.SetHeight(layout.TextareaInputHeight)
 		p.Output.SetWidth(layout.TextareaOutputWidth)
 		p.Output.SetHeight(layout.TextareaOutputHeight)
 		p.Filepicker.SetHeight(layout.FilepickerHeight)
-		p.SaveFilename.Width = 34
+		// bubbles v2 clips a placeholder to one rune when the width is zero and
+		// pads it one cell past the width, so the field keeps the panel line.
+		keyInnerWidth := LeftPanelWidth - 2
+		p.Key.SetWidth(keyInnerWidth - lipgloss.Width(p.Key.Prompt) - 1)
+		p.SaveFilename.SetWidth(34)
 
 	case statusMsg:
 		p.Status = ""
 		return p, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Save Popup Logic
 		if p.ShowSavePopup {
 			switch msg.String() {
@@ -354,22 +360,24 @@ func (p CipherPane) frameView(content string) string {
 		Padding(1).
 		Render(wrappedContent)
 
+	// lipgloss v2 sizes the whole block, border included; the layout numbers
+	// below are v1 dimensions that exclude it, so the border frame is added.
 	inputPanelStyle := lipgloss.NewStyle().
-		Height(layout.TopPanelHeight).
-		Width(layout.RightPanelWidth).
+		Height(layout.TopPanelHeight + 2).
+		Width(layout.RightPanelWidth + 2).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
 		Padding(1)
 
 	outputPanelStyle := lipgloss.NewStyle().
-		Height(layout.BottomPanelHeight).
-		Width(layout.RightPanelWidth).
+		Height(layout.BottomPanelHeight + 2).
+		Width(layout.RightPanelWidth + 2).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
 		Padding(1)
 
 	inputTitle := "INPUT"
-	inputContent := p.Input.View()
+	inputContent := p.textareaFrame(p.Focus == FocusInput).Render(p.Input.View())
 
 	if p.InputMode == File {
 		if p.FileConfirmed {
@@ -427,11 +435,21 @@ func (p CipherPane) frameView(content string) string {
 			lipgloss.Center, lipgloss.Center,
 			popup,
 			lipgloss.WithWhitespaceChars(" "),
-			lipgloss.WithWhitespaceForeground(lipgloss.Color("237")),
+			lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("237"))),
 		)
 	}
 
 	return baseView
+}
+
+// textareaFrame draws the border that v1 kept on the input textarea itself.
+// bubbles v2.2 draws a bordered Base style twice while the placeholder is
+// shown (View and placeholderView both apply it), which nests a second box.
+func (p CipherPane) textareaFrame(focused bool) lipgloss.Style {
+	if focused {
+		return focusedBorderStyle
+	}
+	return blurredBorderStyle
 }
 
 func (p *CipherPane) skipInactive(dir int) {
@@ -468,7 +486,7 @@ func (p *CipherPane) updateFocus() {
 	}
 }
 
-func (p CipherPane) shouldClearKey(msg tea.KeyMsg) bool {
+func (p CipherPane) shouldClearKey(msg tea.KeyPressMsg) bool {
 	return p.Focus == FocusKey && key.Matches(msg, p.PaneKeymap.clearKey) && p.Key.Value() != ""
 }
 
