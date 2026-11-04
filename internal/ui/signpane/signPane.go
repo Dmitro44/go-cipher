@@ -86,8 +86,8 @@ func (p SignPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 		p.Signature.SetWidth(l.RightPanelWidth - 4)
 		p.Signature.SetHeight(l.SignatureHeight)
 		p.Filepicker.SetHeight(l.FilepickerHeight)
-		p.PublicKey.SetWidth(l.KeyFieldWidth)
-		p.PrivateKey.SetWidth(l.KeyFieldWidth)
+		p.PublicKey.SetWidth(l.KeyFieldWidth - 2)
+		p.PrivateKey.SetWidth(l.KeyFieldWidth - 2)
 		p.SaveFilename.SetWidth(34)
 
 	case keysGeneratedMsg:
