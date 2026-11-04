@@ -6,6 +6,7 @@ require (
 	charm.land/bubbles/v2 v2.2.1
 	charm.land/bubbletea/v2 v2.1.1
 	charm.land/lipgloss/v2 v2.0.6
+	github.com/NimbleMarkets/ntcharts/v2 v2.9.0
 	github.com/charmbracelet/x/ansi v0.11.9
 )
 
@@ -24,6 +25,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/xo/terminfo v1.2.0 // indirect
+	golang.org/x/image v0.47.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 )
