@@ -326,7 +326,4 @@ $s$ (таблица @tab:rfc7091). Сообщение, по которому п�
     #raw(read("code/_gost3410.go"))
   ]
 
-  #stp2024.listing[Вкладка Signature][
-    #raw(read("code/_signpane.go"))
-  ]
 ]
