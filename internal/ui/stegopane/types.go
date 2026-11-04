@@ -61,6 +61,37 @@ type StegoPane struct {
 	PreviewColumns  int
 	PreviewRows     int
 
+	// Busy is set while a decode/embed/extract runs off the UI goroutine.
+	Busy bool
+	// KittyOn records that the previews were switched to the Kitty graphics
+	// protocol after the terminal probe confirmed support.
+	KittyOn bool
+
 	StatusError bool
 	PaneKeymap  PaneKeymap
+}
+
+// loadMsg carries a decoded source image back to the pane.
+type loadMsg struct {
+	path string
+	img  image.Image
+	err  error
+}
+
+// embedMsg carries the finished container and its previews back to the pane.
+type embedMsg struct {
+	img       image.Image
+	container image.Image
+	diff      image.Image
+	stats     stego.Stats
+	path      string
+	size      int
+	err       error
+}
+
+// extractMsg carries the recovered payload back to the pane.
+type extractMsg struct {
+	img     image.Image
+	payload []byte
+	err     error
 }
