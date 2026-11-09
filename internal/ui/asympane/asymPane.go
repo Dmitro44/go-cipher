@@ -12,12 +12,12 @@ import (
 	"go-cipher/internal/cipher"
 	"go-cipher/internal/ui"
 
-	"github.com/charmbracelet/bubbles/filepicker"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/filepicker"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -82,9 +82,9 @@ func (p AsymPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 		p.Output.SetWidth(l.TextareaWidth)
 		p.Output.SetHeight(l.TextareaHeight)
 		p.Filepicker.SetHeight(l.FilepickerHeight)
-		p.PublicKey.Width = l.KeyFieldWidth
-		p.PrivateKey.Width = l.KeyFieldWidth
-		p.SaveFilename.Width = 34
+		p.PublicKey.SetWidth(l.KeyFieldWidth)
+		p.PrivateKey.SetWidth(l.KeyFieldWidth)
+		p.SaveFilename.SetWidth(34)
 
 	case keysGeneratedMsg:
 		p.Generating = false
@@ -109,7 +109,7 @@ func (p AsymPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 		}
 		return p, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Save popup owns the keyboard while open.
 		if p.ShowSavePopup {
 			switch msg.String() {
@@ -467,7 +467,7 @@ func (p AsymPane) View() string {
 			lipgloss.Center, lipgloss.Center,
 			popup,
 			lipgloss.WithWhitespaceChars(" "),
-			lipgloss.WithWhitespaceForeground(lipgloss.Color("237")),
+			lipgloss.WithWhitespaceStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("237"))),
 		)
 	}
 
@@ -537,9 +537,11 @@ func (p AsymPane) keysView(l Layout) string {
 		footer,
 	)
 
+	// lipgloss v2 sizes the whole block, border included; the layout numbers
+	// used here are v1 dimensions that exclude it, so the border frame is added.
 	return lipgloss.NewStyle().
-		Width(keyContentWidth+2).
-		Height(l.KeyPanelHeight).
+		Width(keyContentWidth+4).
+		Height(l.KeyPanelHeight+2).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(keyBorderColor).
 		Padding(0, 1).
@@ -642,8 +644,8 @@ func (p AsymPane) messagePanel(totalWidth, contentHeight int, emphasized bool) l
 	}
 
 	return lipgloss.NewStyle().
-		Width(totalWidth-2).
-		Height(contentHeight).
+		Width(totalWidth).
+		Height(contentHeight+2).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(border).
 		Padding(0, 1)

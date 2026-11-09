@@ -3,25 +3,27 @@ package asympane
 import (
 	"os"
 
-	"github.com/charmbracelet/bubbles/filepicker"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/filepicker"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/lipgloss/v2"
 )
 
 // newTextarea builds a borderless editor. The surrounding message panel draws
 // the border and highlights it while the editor is focused.
 func newTextarea(placeholder string) textarea.Model {
 	ta := textarea.New()
-	ta.Cursor.Style = cursorStyle
 	ta.Prompt = ""
 	ta.Placeholder = placeholder
 	ta.ShowLineNumbers = false
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
-	ta.BlurredStyle.CursorLine = lipgloss.NewStyle()
-	ta.FocusedStyle.Placeholder = mutedStyle
-	ta.BlurredStyle.Placeholder = mutedStyle
+	styles := ta.Styles()
+	styles.Cursor.Color = cursorColor
+	styles.Focused.CursorLine = lipgloss.NewStyle()
+	styles.Blurred.CursorLine = lipgloss.NewStyle()
+	styles.Focused.Placeholder = mutedStyle
+	styles.Blurred.Placeholder = mutedStyle
+	ta.SetStyles(styles)
 	ta.Focus()
 
 	return ta
@@ -29,14 +31,16 @@ func newTextarea(placeholder string) textarea.Model {
 
 func newOutputTextarea(placeholder string) textarea.Model {
 	ta := textarea.New()
-	ta.Cursor.Style = cursorStyle
 	ta.Prompt = ""
 	ta.Placeholder = placeholder
 	ta.ShowLineNumbers = false
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
-	ta.BlurredStyle.CursorLine = lipgloss.NewStyle()
-	ta.FocusedStyle.Placeholder = mutedStyle
-	ta.BlurredStyle.Placeholder = mutedStyle
+	styles := ta.Styles()
+	styles.Cursor.Color = cursorColor
+	styles.Focused.CursorLine = lipgloss.NewStyle()
+	styles.Blurred.CursorLine = lipgloss.NewStyle()
+	styles.Focused.Placeholder = mutedStyle
+	styles.Blurred.Placeholder = mutedStyle
+	ta.SetStyles(styles)
 
 	return ta
 }
@@ -44,7 +48,9 @@ func newOutputTextarea(placeholder string) textarea.Model {
 func newTextinput(placeholder string) textinput.Model {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
-	ti.Cursor.Style = cursorStyle
+	styles := ti.Styles()
+	styles.Cursor.Color = cursorColor
+	ti.SetStyles(styles)
 	return ti
 }
 

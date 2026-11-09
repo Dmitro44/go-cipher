@@ -1,9 +1,9 @@
 package ui
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 var (
@@ -54,7 +54,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.Batch(cmds...)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, m.Keymap.quit):
 			// If the active pane consumes the key,
@@ -80,7 +80,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
 	var tabs []string
 	for i, tab := range m.Tabs {
 		if i == m.ActiveTab {
@@ -90,5 +90,7 @@ func (m Model) View() string {
 		}
 	}
 
-	return lipgloss.JoinHorizontal(0, tabs...) + "\n" + m.Tabs[m.ActiveTab].Pane.View()
+	view := tea.NewView(lipgloss.JoinHorizontal(0, tabs...) + "\n" + m.Tabs[m.ActiveTab].Pane.View())
+	view.AltScreen = true
+	return view
 }
