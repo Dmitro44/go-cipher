@@ -1,0 +1,76 @@
+mceliece1978:
+  type: Report
+  title:
+    value: "A Public-Key Cryptosystem Based on Algebraic Coding Theory"
+    short: ""
+  author: ["McEliece, Robert J."]
+  date: 1978
+  organization: Jet Propulsion Laboratory
+  serial-number: "DSN Progress Report 42-44"
+  language: en
+
+patterson1975:
+  type: Article
+  title:
+    value: "The Algebraic Decoding of Goppa Codes"
+    short: ""
+  author: ["Patterson, Nicholas J."]
+  date: 1975
+  parent:
+    type: Periodical
+    title: IEEE Transactions on Information Theory
+    volume: 21
+    issue: 2
+  page-range: 203-207
+  language: en
+
+goppa1970:
+  type: Article
+  title:
+    value: "A New Class of Linear Error-Correcting Codes"
+    short: ""
+  author: ["Goppa, Valerii D."]
+  date: 1970
+  parent:
+    type: Periodical
+    title: Problems of Information Transmission
+    volume: 6
+    issue: 3
+  page-range: 24-30
+  language: en
+
+bernstein2008:
+  type: Article
+  title:
+    value: "Attacking and Defending the McEliece Cryptosystem"
+    short: ""
+  author: ["Bernstein, Daniel J.", "Lange, Tanja", "Peters, Christiane"]
+  date: 2008
+  parent:
+    type: Proceedings
+    title: Post-Quantum Cryptography
+    publisher: Springer
+  page-range: 31-46
+  language: en
+
+menezes1996:
+  type: Book
+  title:
+    value: "Handbook of Applied Cryptography"
+    short: ""
+  author: ["Menezes, Alfred J.", "van Oorschot, Paul C.", "Vanstone, Scott A."]
+  publisher:
+    name: CRC Press
+    location: Boca Raton
+  date: 1996
+  page-total: 780
+  language: en
+
+mzi2024:
+  type: Report
+  title:
+    value: "Лабораторные работы по дисциплине «Методы защиты информации» : методические указания"
+    short: ""
+  date: 2024
+  organization: БГУИР
+  language: ru
