@@ -40,16 +40,10 @@ go run .
 |---|---|
 | `Tab` / `Shift+Tab` | switch fields |
 | `Enter` | select value / run |
-<<<<<<< HEAD
-| `Ctrl+G` | generate random key (KEY field focused) |
-| `Ctrl+K` | clear key |
-| `Ctrl+D` | move result to input |
-=======
 | `Ctrl+G` | generate keys |
 | `Ctrl+R` | reveal/hide private key (asymmetric tabs) |
 | `Ctrl+K` | clear focused key field |
 | `Ctrl+D` | move result to input / digest to expected (hash tab) |
->>>>>>> 396d57f (feat: add Streebog and SHA-1 hashing with Hash tab and lab 5 report)
 | `Alt+D` | clear input |
 | `Enter` | switch algorithm/source (hash tab) or run |
 | `Esc` / `Ctrl+C` | quit |
