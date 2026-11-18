@@ -111,7 +111,9 @@ SHA-1 считается устаревшей: практические колл
 запустить оценку лавинного эффекта (рис. @fig:hash-ui).
 
 #figure(
-  image("img/tui-hash.png", width: 100%),
+  rect(stroke: 1.5pt + black, inset: 0pt)[
+    #image("img/tui-hash.png", width: 100%)
+  ],
   caption: [Вкладка #emph("Hash"): дайджест ГОСТ Р 34.11-2012 (512 бит) и вердикт сравнения
     с ожидаемым значением],
 ) <fig:hash-ui>
