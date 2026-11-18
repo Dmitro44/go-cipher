@@ -212,7 +212,9 @@ $v$, $z_1$, $z_2$, точка $C$ и сравнивается $x_C mod q$ с $r$
 команде #emph("SAVE TO FILE").
 
 #figure(
-  image("img/tui-signature.png", width: 100%),
+  rect(stroke: 1.5pt + black, inset: 0pt)[
+    #image("img/tui-signature.png", width: 100%)
+  ],
   caption: [Вкладка #emph("Signature") в режиме проверки: подпись, сформированная для сообщения,
     признана верной],
 )
