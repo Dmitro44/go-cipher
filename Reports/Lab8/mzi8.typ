@@ -190,7 +190,9 @@ $ Y = 0.299 R + 0.587 G + 0.114 B. $
 полублоки.
 
 #figure(
-  image("img/tui-stego.png", width: 100%),
+  rect(stroke: 1.5pt + black, inset: 0pt)[
+    #image("img/tui-stego.png", width: 100%)
+  ],
   caption: [Вкладка #emph("Stego") после встраивания: оригинал, контейнер и разность яркостей],
 )
 
