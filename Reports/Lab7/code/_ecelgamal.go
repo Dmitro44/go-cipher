@@ -50,6 +50,9 @@ var (
 	// ErrUnsupportedPrime — модуль кривой не сравним с 3 по модулю 4,
 	// поэтому простой формулы квадратного корня (p+1)/4 недостаточно.
 	ErrUnsupportedPrime = errors.New("ecelgamal: curve prime is not 3 mod 4")
+	// ErrCurveTooSmall — модуль короче 16 бит, поэтому фрагмент сообщения
+	// пуст и шифровать нечего.
+	ErrCurveTooSmall = errors.New("ecelgamal: curve modulus is too small")
 	// ErrNonce — не удалось получить случайное k.
 	ErrNonce = errors.New("ecelgamal: cannot generate nonce")
 )
@@ -312,6 +315,9 @@ func validateCurve(c *ec.Curve) error {
 	if !primeIs3Mod4(c.P) {
 		return fmt.Errorf("%w: p mod 4 = %d", ErrUnsupportedPrime, new(big.Int).Mod(c.P, big.NewInt(4)))
 	}
+	if ChunkBytes(c) < 1 {
+		return fmt.Errorf("%w: |p| = %d bits", ErrCurveTooSmall, c.P.BitLen())
+	}
 	return nil
 }
 
@@ -373,7 +379,7 @@ func squareRoot(p, f *big.Int) (*big.Int, bool) {
 // randomScalar выбирает k из диапазона 1..n-1, читая байты из rnd.
 func randomScalar(n *big.Int, rnd io.Reader) (*big.Int, error) {
 	for {
-		k, err := rand.Int(rnd, new(big.Int).Sub(n, one))
+		k, err := rand.Int(rnd, n)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrNonce, err)
 		}
