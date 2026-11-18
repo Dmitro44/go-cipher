@@ -1,0 +1,33 @@
+menezes1996:
+  type: Book
+  title:
+    value: "Handbook of Applied Cryptography"
+    short: ""
+  author: ["Menezes, Alfred J.", "van Oorschot, Paul C.", "Vanstone, Scott A."]
+  publisher:
+    name: CRC Press
+    location: Boca Raton
+  date: 1996
+  page-total: 780
+  language: en
+
+rfc6986:
+  type: Report
+  title:
+    value: "GOST R 34.11-2012: Hash Function"
+    short: ""
+  author: ["Dolmatov, Vasily", "Degtyarev, Alexandr"]
+  date: 2013
+  organization: IETF
+  serial-number: "RFC 6986"
+  language: en
+
+fips1804:
+  type: Report
+  title:
+    value: "Secure Hash Standard (SHS)"
+    short: ""
+  author: [{ name: "National Institute of Standards and Technology" }]
+  date: 2015
+  serial-number: "FIPS PUB 180-4"
+  language: en
