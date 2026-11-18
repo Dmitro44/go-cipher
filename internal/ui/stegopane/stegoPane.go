@@ -95,7 +95,7 @@ func (p StegoPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 		p.Stats = stego.Stats{CapacityBits: stego.Capacity(msg.img)}
 		p.setStatus(fmt.Sprintf(
 			"Loaded %s · capacity %d B",
-			filepath.Base(msg.path), stego.Capacity(msg.img)/8,
+			filepath.Base(msg.path), stego.MaxMessage(msg.img),
 		))
 		cmds = append(cmds,
 			p.PreviewOriginal.SetImage(msg.img),
@@ -702,15 +702,15 @@ func (p StegoPane) sourceView(l Layout) string {
 	}
 	pathLine = ansi.Truncate(pathLine, l.PanelWidth, "…")
 
-	capacity := stego.Capacity(p.OriginalImage)
+	capacity := stego.MaxMessage(p.OriginalImage)
 	capacityText := "n/a"
 	payloadText := "0.0%"
 	payloadStyle := selectedStyle
 
 	if capacity > 0 {
-		capacityText = fmt.Sprintf("%d B (%d bits)", capacity/8, capacity)
+		capacityText = fmt.Sprintf("%d B (%d bits)", capacity, capacity*8)
 		usedBytes := len(p.Message.Value())
-		percent := 100 * float64(usedBytes) / float64(capacity/8)
+		percent := 100 * float64(usedBytes) / float64(capacity)
 		payloadText = fmt.Sprintf("%.1f%%", percent)
 		if percent > 100 {
 			payloadStyle = errorStyle
@@ -763,7 +763,7 @@ func (p StegoPane) statsView(width int) string {
 		if p.HasExtracted {
 			return strings.Join([]string{
 				fmt.Sprintf("EXTRACTED   %d B", len(p.LastExtracted)),
-				fmt.Sprintf("CAPACITY    %d B", p.Stats.CapacityBits/8),
+				fmt.Sprintf("CAPACITY    %d B", stego.MaxMessage(p.OriginalImage)),
 				mutedStyle.Render("Container ") + filepath.Base(p.SelectedFile),
 			}, "\n")
 		}

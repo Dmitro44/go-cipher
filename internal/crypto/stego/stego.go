@@ -81,6 +81,12 @@ func Capacity(img image.Image) int {
 	return 2 * (bounds.Dx() / blockSide) * (bounds.Dy() / blockSide)
 }
 
+// MaxMessage возвращает наибольшую длину сообщения в байтах: ёмкость за
+// вычетом служебного заголовка кадра.
+func MaxMessage(img image.Image) int {
+	return max(0, Capacity(img)/8-headerSize)
+}
+
 // DecodeFile читает изображение из файла. Поддерживаются JPEG и PNG:
 // JPEG — исходный контейнер, PNG — контейнер, в который мы записываем
 // результат без повторного квантования.
