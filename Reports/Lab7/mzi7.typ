@@ -264,7 +264,9 @@ $
 терминальном интерфейсе показан на рисунке @fig:shot.
 
 #figure(
-  image("img/tui-elgamal-decrypt.png", width: 100%),
+  rect(stroke: 1.5pt + black, inset: 0pt)[
+    #image("img/tui-elgamal-decrypt.png", width: 100%)
+  ],
   caption: [Режим #emph("Decrypt"): шифртекст расшифрован закрытым ключом, сообщение
     восстановлено],
 ) <fig:shot>
