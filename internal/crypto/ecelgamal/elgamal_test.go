@@ -345,3 +345,21 @@ func TestMessageChunkTooLongRejected(t *testing.T) {
 		t.Fatalf("получено %v", err)
 	}
 }
+
+func TestTinyCurveRejected(t *testing.T) {
+	// y^2 = x^3 + 1 над GF(23): корректная кривая, но |p| = 5 бит, поэтому
+	// ChunkBytes = 0 и Encrypt делил на ноль.
+	c := &ec.Curve{
+		P: big.NewInt(23), A: big.NewInt(0), B: big.NewInt(1),
+		N: big.NewInt(3), GX: big.NewInt(0), GY: big.NewInt(1),
+	}
+	if err := c.Validate(); err != nil {
+		t.Fatalf("малая кривая некорректна: %v", err)
+	}
+	if _, err := Encrypt(c, c.Base(), []byte("abc"), fixedReader()); !errors.Is(err, ErrCurveTooSmall) {
+		t.Fatalf("Encrypt: получено %v", err)
+	}
+	if _, err := Decrypt(c, big.NewInt(2), make([]byte, 4)); !errors.Is(err, ErrCurveTooSmall) {
+		t.Fatalf("Decrypt: получено %v", err)
+	}
+}
