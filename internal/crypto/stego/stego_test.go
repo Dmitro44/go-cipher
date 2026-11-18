@@ -114,6 +114,27 @@ func TestContainerPNGRoundTrip(t *testing.T) {
 	}
 }
 
+// A subimage carries its parent's stride and a non-zero origin; the block
+// loops index pixels from (0,0), so Embed must copy it into a tight RGBA.
+func TestOffsetOriginSubimageRoundTrip(t *testing.T) {
+	base := makePhoto(320, 320).(*image.RGBA)
+	sub := base.SubImage(image.Rect(16, 24, 16+256, 24+192))
+	message := []byte("offset origin")
+
+	stego, _, err := Embed(sub, message)
+	if err != nil {
+		t.Fatalf("embed: %v", err)
+	}
+
+	extracted, err := Extract(stego)
+	if err != nil {
+		t.Fatalf("extract: %v", err)
+	}
+	if !bytes.Equal(extracted, message) {
+		t.Fatalf("extracted %q, want %q", extracted, message)
+	}
+}
+
 func TestExtractCleanImageRejected(t *testing.T) {
 	img := loadSample(t)
 
