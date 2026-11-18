@@ -364,8 +364,11 @@ func bitsToBytes(bits []byte) []byte {
 
 // toRGBA приводит изображение к RGBA: дальше пиксели читаются и пишутся по
 // слайсу Pix, без интерфейсных вызовов At/Set на каждый пиксель.
+// Под-изображение сохраняет шаг родителя и ненулевой Rect.Min, а циклы по
+// блокам отсчитывают пиксели от (0,0), поэтому такое изображение копируется
+// в плотный RGBA, а не используется как есть.
 func toRGBA(img image.Image) *image.RGBA {
-	if rgba, ok := img.(*image.RGBA); ok {
+	if rgba, ok := img.(*image.RGBA); ok && rgba.Rect.Min == (image.Point{}) {
 		return rgba
 	}
 	bounds := img.Bounds()
