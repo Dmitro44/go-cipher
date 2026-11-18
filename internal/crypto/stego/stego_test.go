@@ -159,6 +159,12 @@ func TestPayloadTooLarge(t *testing.T) {
 func TestCapacityBoundary(t *testing.T) {
 	img := loadSample(t)
 	maxPayload := Capacity(img)/8 - headerSize
+	if got := MaxMessage(img); got != maxPayload {
+		t.Fatalf("MaxMessage = %d, want %d", got, maxPayload)
+	}
+	if got := MaxMessage(nil); got != 0 {
+		t.Fatalf("MaxMessage(nil) = %d, want 0", got)
+	}
 
 	if _, _, err := Embed(img, bytes.Repeat([]byte{1}, maxPayload)); err != nil {
 		t.Fatalf("embed exactly at capacity: %v", err)
