@@ -27,7 +27,7 @@ func NewField(m int) (*Field, error) {
 		size: size,
 		poly: poly,
 		log:  make([]int, size),
-		exp: make([]uint16, 2*(size-1)),
+		exp:  make([]uint16, 2*(size-1)),
 	}
 
 	x := uint16(1)
