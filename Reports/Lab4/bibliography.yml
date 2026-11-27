@@ -66,11 +66,11 @@ menezes1996:
   page-total: 780
   language: en
 
-mzi2024:
-  type: Report
-  title:
-    value: "Лабораторные работы по дисциплине «Методы защиты информации» : методические указания"
-    short: ""
-  date: 2024
-  organization: БГУИР
-  language: ru
+# mzi2024:
+#   type: Report
+#   title:
+#     value: "Лабораторные работы по дисциплине «Методы защиты информации» : методические указания"
+#     short: ""
+#   date: 2024
+#   organization: БГУИР
+#   language: ru

@@ -6,20 +6,6 @@ import (
 	"io"
 )
 
-// Криптосистема Мак-Элиса.
-//
-// Открытый ключ — порождающая матрица G1 = S*G*P, где G — систематическая
-// порождающая матрица кода Гоппы, S — случайная обратимая k×k матрица,
-// P — перестановка координат. В реализации P объединена со случайным
-// порядком опорных элементов, поэтому хранится не матрица перестановки,
-// а уже переставленный список опорных элементов support.
-//
-// Зашифрование: C = M*G1 + Z, где M — k-битный блок сообщения, Z — вектор
-// ошибок веса ровно t.
-//
-// Расшифрование: принятое слово декодируется Паттерсоном с секретными g и
-// support, что даёт M*S, затем умножается на S^{-1}.
-
 const (
 	publicMagic  = "MZIMCEPK"
 	privateMagic = "MZIMCESK"
@@ -30,22 +16,18 @@ const (
 	framingBits       = 32
 )
 
-// PublicKey — открытый ключ Мак-Элиса.
 type PublicKey struct {
 	Params Params
-	Matrix *Matrix // G1, k × n
+	Matrix *Matrix
 }
 
-// PrivateKey — закрытый ключ Мак-Элиса.
 type PrivateKey struct {
 	Params   Params
 	G        Poly
 	Support  []uint16
-	SInverse *Matrix // S^{-1}, k × k
+	SInverse *Matrix
 }
 
-// GenerateKeyPair создаёт ключевую пару. random — источник случайности;
-// в рабочем коде это crypto/rand, в тестах — детерминированный читатель.
 func GenerateKeyPair(params Params, random io.Reader) (*PublicKey, *PrivateKey, error) {
 	code, err := NewGoppaCode(params, random)
 	if err != nil {
@@ -56,7 +38,6 @@ func GenerateKeyPair(params Params, random io.Reader) (*PublicKey, *PrivateKey, 
 	if err != nil {
 		return nil, nil, err
 	}
-	// G1 = S*G: строки G складываются по строкам S.
 	public, err := scrambler.Mul(code.Matrix)
 	if err != nil {
 		return nil, nil, err
@@ -67,7 +48,6 @@ func GenerateKeyPair(params Params, random io.Reader) (*PublicKey, *PrivateKey, 
 		nil
 }
 
-// GenerateKeys создаёт ключевую пару и возвращает её в двоичном формате.
 func GenerateKeys(params Params) (public, private []byte, err error) {
 	publicKey, privateKey, err := GenerateKeyPair(params, rand.Reader)
 	if err != nil {
@@ -76,12 +56,10 @@ func GenerateKeys(params Params) (public, private []byte, err error) {
 	return publicKey.MarshalBinary(), privateKey.MarshalBinary(), nil
 }
 
-// Encrypt зашифровывает сообщение случайным вектором ошибок.
 func (k *PublicKey) Encrypt(message []byte) ([]byte, error) {
 	return k.EncryptWithRandom(message, rand.Reader)
 }
 
-// EncryptWithRandom — зашифрование с явным источником случайности.
 func (k *PublicKey) EncryptWithRandom(message []byte, random io.Reader) ([]byte, error) {
 	params := k.Params
 	if k.Matrix == nil || k.Matrix.Rows != params.K || k.Matrix.Cols != params.N {
@@ -92,8 +70,6 @@ func (k *PublicKey) EncryptWithRandom(message []byte, random io.Reader) ([]byte,
 	}
 
 	framed, totalBits := frameMessage(message)
-	// Блоки по k бит; последний дополняется нулями. Пустое сообщение
-	// всё равно даёт один блок: кадр содержит 32-битную длину.
 	blocks := (totalBits + params.K - 1) / params.K
 	blockBytes := params.N / 8
 	cipher := make([]byte, blocks*blockBytes)
@@ -120,7 +96,6 @@ func (k *PublicKey) EncryptWithRandom(message []byte, random io.Reader) ([]byte,
 	return cipher, nil
 }
 
-// Decrypt расшифровывает сообщение закрытым ключом.
 func (k *PrivateKey) Decrypt(cipher []byte) ([]byte, error) {
 	params := k.Params
 	blockBytes := params.N / 8
@@ -145,7 +120,6 @@ func (k *PrivateKey) Decrypt(cipher []byte) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%w: block %d: %v", ErrDecode, block, err)
 		}
-		// Первые k бит кодового слова — это M*S; умножаем на S^{-1}.
 		message := k.SInverse.MulVector(corrected)
 		for bit := 0; bit < params.K; bit++ {
 			if vectorBit(message, bit) {
@@ -157,8 +131,6 @@ func (k *PrivateKey) Decrypt(cipher []byte) ([]byte, error) {
 	return unframeMessage(combined, blocks, params)
 }
 
-// frameMessage добавляет к сообщению 32-битную длину в битах. Бит 0 —
-// старший бит первого байта сообщения.
 func frameMessage(message []byte) ([]uint64, int) {
 	totalBits := framingBits + 8*len(message)
 	framed := newVector(totalBits)
@@ -177,7 +149,6 @@ func frameMessage(message []byte) ([]uint64, int) {
 	return framed, totalBits
 }
 
-// unframeMessage проверяет длину и нулевое дополнение последнего блока.
 func unframeMessage(bits []uint64, blocks int, params Params) ([]byte, error) {
 	if blocks*params.K < framingBits {
 		return nil, ErrBadCipher
@@ -250,7 +221,6 @@ func randomMatrix(rows, cols int, random io.Reader) (*Matrix, error) {
 	return matrix, nil
 }
 
-// randomErrorVector выбирает ровно weight различных позиций из n.
 func randomErrorVector(n, weight int, random io.Reader) ([]uint64, error) {
 	if weight > n {
 		return nil, fmt.Errorf("mceliece: error weight %d exceeds block length %d", weight, n)
