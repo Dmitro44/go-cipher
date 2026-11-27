@@ -1,6 +1,7 @@
 package asympane
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -26,6 +27,8 @@ type AsymPane struct {
 	Cipher         cipher.AsymCipher
 	PublicKey      textinput.Model
 	PrivateKey     textinput.Model
+	PublicRaw      []byte
+	PrivateRaw     []byte
 	PrivateVisible bool
 	KeyPreset      int
 	Input          textarea.Model
@@ -47,13 +50,22 @@ type keysGeneratedMsg struct {
 	err  error
 }
 
+const (
+	publicKeyPlaceholder  = "No public key yet — press Ctrl+G"
+	privateKeyPlaceholder = "No private key yet — press Ctrl+G"
+
+	// largeKeyHexLimit is the point where a key no longer fits a textinput
+	// usefully; such keys stay as raw bytes behind a placeholder.
+	largeKeyHexLimit = 512
+)
+
 func NewAsymPane(c cipher.AsymCipher) AsymPane {
 	p := AsymPane{
 		Cipher:       c,
 		Focus:        FocusKeySize,
 		PaneKeymap:   newPaneKeymap(),
-		PublicKey:    newTextinput("No public key yet — press Ctrl+G"),
-		PrivateKey:   newTextinput("No private key yet — press Ctrl+G"),
+		PublicKey:    newTextinput(publicKeyPlaceholder),
+		PrivateKey:   newTextinput(privateKeyPlaceholder),
 		Input:        newTextarea("Type a message to encrypt, or hex ciphertext to decrypt..."),
 		Output:       newOutputTextarea("Result will appear here..."),
 		Filepicker:   newFilepicker(),
@@ -92,8 +104,8 @@ func (p AsymPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 			p.setError("Key generation failed: " + msg.err.Error())
 			return p, p.clearStatusCmd()
 		}
-		p.PublicKey.SetValue(hex.EncodeToString(msg.keys.Public))
-		p.PrivateKey.SetValue(hex.EncodeToString(msg.keys.Private))
+		p.storePublicKey(msg.keys.Public)
+		p.storePrivateKey(msg.keys.Private)
 		p.hidePrivate()
 		p.setStatus(fmt.Sprintf(
 			"Keypair ready — public %d B, private %d B",
@@ -157,6 +169,12 @@ func (p AsymPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 		case key.Matches(msg, p.PaneKeymap.reveal):
 			p.togglePrivate()
 			return p, nil
+		case key.Matches(msg, p.PaneKeymap.exportKeys):
+			p.exportKeys()
+			return p, p.clearStatusCmd()
+		case key.Matches(msg, p.PaneKeymap.importKeys):
+			p.importKeys()
+			return p, p.clearStatusCmd()
 		case key.Matches(msg, p.PaneKeymap.generate):
 			if cmd := p.startGeneration(); cmd != nil {
 				return p, cmd
@@ -225,9 +243,13 @@ func (p AsymPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 			return p, nil
 		case p.Focus == FocusPublicKey && key.Matches(msg, p.PaneKeymap.clearKey):
 			p.PublicKey.SetValue("")
+			p.PublicKey.Placeholder = publicKeyPlaceholder
+			p.PublicRaw = nil
 			return p, nil
 		case p.Focus == FocusPrivateKey && key.Matches(msg, p.PaneKeymap.clearKey):
 			p.PrivateKey.SetValue("")
+			p.PrivateKey.Placeholder = privateKeyPlaceholder
+			p.PrivateRaw = nil
 			return p, nil
 		}
 	}
@@ -272,7 +294,7 @@ func (p *AsymPane) run() tea.Cmd {
 	}
 
 	if decrypt {
-		priv, err := decodeHex("private key", p.PrivateKey.Value())
+		priv, err := keyBytes("private key", p.PrivateRaw, p.PrivateKey.Value())
 		if err != nil {
 			p.setError(err.Error())
 			return p.clearStatusCmd()
@@ -293,7 +315,7 @@ func (p *AsymPane) run() tea.Cmd {
 		return p.clearStatusCmd()
 	}
 
-	pub, err := decodeHex("public key", p.PublicKey.Value())
+	pub, err := keyBytes("public key", p.PublicRaw, p.PublicKey.Value())
 	if err != nil {
 		p.setError(err.Error())
 		return p.clearStatusCmd()
@@ -625,7 +647,7 @@ func (p AsymPane) hintLine(width int) string {
 	case p.Generating:
 		return statusStyle.Render("Generating keypair…")
 	default:
-		hint := "Ctrl+G keys · Ctrl+R private · Ctrl+D out→input"
+		hint := "Ctrl+G keys · Ctrl+R private · Ctrl+E export · Ctrl+L import · Ctrl+D out→input"
 		return mutedStyle.Render(ansi.Truncate(hint, width, "…"))
 	}
 }
@@ -667,6 +689,102 @@ func decodeHex(label, value string) ([]byte, error) {
 	decoded, err := hex.DecodeString(value)
 	if err != nil {
 		return nil, errors.New(label + " is not valid hex")
+	}
+	return decoded, nil
+}
+
+// storePublicKey keeps a short key in its text field and a long one as raw
+// bytes with a compact placeholder, since a textinput cannot show it.
+func (p *AsymPane) storePublicKey(key []byte) {
+	storeKey(&p.PublicKey, &p.PublicRaw, key, publicKeyPlaceholder)
+}
+
+func (p *AsymPane) storePrivateKey(key []byte) {
+	storeKey(&p.PrivateKey, &p.PrivateRaw, key, privateKeyPlaceholder)
+}
+
+func storeKey(field *textinput.Model, raw *[]byte, key []byte, placeholder string) {
+	*raw = nil
+	field.Placeholder = placeholder
+	if 2*len(key) > largeKeyHexLimit {
+		*raw = append([]byte(nil), key...)
+		field.SetValue("")
+		field.Placeholder = fmt.Sprintf("<binary key: %d B>", len(key))
+		return
+	}
+	field.SetValue(hex.EncodeToString(key))
+}
+
+// keyBytes prefers hex typed or pasted into the field and falls back to the
+// stored bytes of a large key.
+func keyBytes(label string, raw []byte, field string) ([]byte, error) {
+	if strings.TrimSpace(field) != "" {
+		return decodeHex(label, field)
+	}
+	if len(raw) > 0 {
+		return raw, nil
+	}
+	return nil, errors.New(label + " is empty")
+}
+
+func (p AsymPane) keyFilename(kind string) string {
+	name := strings.ToLower(strings.ReplaceAll(p.Cipher.Name(), " ", "-"))
+	return name + "-" + kind + ".key"
+}
+
+func (p *AsymPane) exportKeys() {
+	pub, err := keyBytes("public key", p.PublicRaw, p.PublicKey.Value())
+	if err != nil {
+		p.setError(err.Error())
+		return
+	}
+	priv, err := keyBytes("private key", p.PrivateRaw, p.PrivateKey.Value())
+	if err != nil {
+		p.setError(err.Error())
+		return
+	}
+
+	pubFile, privFile := p.keyFilename("public"), p.keyFilename("private")
+	if err := os.WriteFile(pubFile, []byte(hex.EncodeToString(pub)), 0o644); err != nil {
+		p.setError("Export failed: " + err.Error())
+		return
+	}
+	if err := os.WriteFile(privFile, []byte(hex.EncodeToString(priv)), 0o644); err != nil {
+		p.setError("Export failed: " + err.Error())
+		return
+	}
+	p.setStatus("Exported to " + pubFile + " and " + privFile)
+}
+
+func (p *AsymPane) importKeys() {
+	pub, err := readHexKey(p.keyFilename("public"))
+	if err != nil {
+		p.setError("Import failed: " + err.Error())
+		return
+	}
+	priv, err := readHexKey(p.keyFilename("private"))
+	if err != nil {
+		p.setError("Import failed: " + err.Error())
+		return
+	}
+
+	p.storePublicKey(pub)
+	p.storePrivateKey(priv)
+	p.setStatus(fmt.Sprintf("Imported keys — public %d B, private %d B", len(pub), len(priv)))
+}
+
+func readHexKey(name string) ([]byte, error) {
+	content, err := os.ReadFile(name)
+	if err != nil {
+		return nil, err
+	}
+	content = bytes.TrimSpace(content)
+	if len(content) == 0 {
+		return nil, errors.New(name + " is empty")
+	}
+	decoded, err := hex.DecodeString(string(content))
+	if err != nil {
+		return nil, errors.New(name + " does not contain valid hex")
 	}
 	return decoded, nil
 }
