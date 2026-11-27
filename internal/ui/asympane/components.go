@@ -87,5 +87,11 @@ func newPaneKeymap() PaneKeymap {
 		reveal: key.NewBinding(
 			key.WithKeys("ctrl+r"),
 		),
+		exportKeys: key.NewBinding(
+			key.WithKeys("ctrl+e"),
+		),
+		importKeys: key.NewBinding(
+			key.WithKeys("ctrl+l"),
+		),
 	}
 }

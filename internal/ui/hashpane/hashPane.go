@@ -77,6 +77,7 @@ func (p HashPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 		p.DigestView.SetWidth(l.RightPanelWidth - 4)
 		p.DigestView.SetHeight(l.DigestHeight)
 		p.Expected.SetWidth(l.RightPanelWidth - 4)
+		p.syncExpectedWidth()
 		p.Filepicker.SetHeight(l.FilepickerHeight)
 		p.SaveFilename.SetWidth(34)
 
@@ -135,6 +136,7 @@ func (p HashPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 				return p, p.clearStatusCmd()
 			}
 			p.Expected.SetValue(p.Digest)
+			p.syncExpectedWidth()
 			p.setStatus("Digest copied to EXPECTED")
 			return p, p.clearStatusCmd()
 		case key.Matches(msg, p.PaneKeymap.clearInput):
@@ -197,6 +199,7 @@ func (p HashPane) Update(msg tea.Msg) (ui.Pane, tea.Cmd) {
 	case FocusExpected:
 		var cmd tea.Cmd
 		p.Expected, cmd = p.Expected.Update(msg)
+		p.syncExpectedWidth()
 		cmds = append(cmds, cmd)
 	}
 
@@ -290,6 +293,20 @@ func (p *HashPane) toggleInputMode() {
 	p.FileConfirmed = false
 	p.SelectedFile = ""
 	p.updateFocus()
+}
+
+func (p *HashPane) syncExpectedWidth() {
+	inner := NewLayout(p.Width, p.Height).RightPanelWidth - 4
+	if p.Expected.Value() == "" {
+		p.Expected.SetWidth(inner - lipgloss.Width(p.Expected.Prompt) - 1)
+		return
+	}
+
+	p.Expected.SetWidth(0)
+	// SetWidth does not re-layout the field; SetCursor recomputes the overflow
+	// offsets, without which a value set while the width was non-zero stays
+	// clipped instead of being emitted in full for Hardwrap.
+	p.Expected.SetCursor(p.Expected.Position())
 }
 
 func (p *HashPane) updateFocus() {
@@ -411,7 +428,7 @@ func (p HashPane) messageView(l Layout) string {
 		labelStyle.Render("DIGEST"),
 		p.DigestView.View(),
 		labelStyle.Render("EXPECTED")+mutedStyle.Render(" (hex)"),
-		p.Expected.View(),
+		ansi.Hardwrap(p.Expected.View(), l.RightPanelWidth-4, true),
 		p.verdictView(),
 	)
 	rightPanel := p.messagePanel(l.RightPanelWidth, l.MessagePanelHeight, p.Focus == FocusExpected).
