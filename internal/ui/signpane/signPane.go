@@ -316,7 +316,7 @@ func (p *SignPane) run() tea.Cmd {
 	sig, err := decodeSignature(p.Signature.Value())
 	if err != nil {
 		p.Verdict = VerdictInvalid
-		p.VerdictReason = "некорректная подпись"
+		p.VerdictReason = "malformed signature"
 		p.setError(err.Error())
 		return p.clearStatusCmd()
 	}
@@ -325,7 +325,7 @@ func (p *SignPane) run() tea.Cmd {
 	switch {
 	case err != nil:
 		p.Verdict = VerdictInvalid
-		p.VerdictReason = "ошибка проверки: " + err.Error()
+		p.VerdictReason = "verify error: " + err.Error()
 		p.setError("Verification failed: " + err.Error())
 	case ok:
 		p.Verdict = VerdictValid
@@ -629,14 +629,14 @@ func (p SignPane) messageView(l Layout) string {
 func (p SignPane) verdictView() string {
 	switch p.Verdict {
 	case VerdictValid:
-		return verdictValidStyle.Render("ПОДПИСЬ ВЕРНА") + mutedStyle.Render(" · "+p.VerdictReason)
+		return verdictValidStyle.Render("SIGNATURE VALID") + mutedStyle.Render(" · "+p.VerdictReason)
 	case VerdictInvalid:
-		return verdictInvalidStyle.Render("ПОДПИСЬ НЕВЕРНА") + mutedStyle.Render(" · "+p.VerdictReason)
+		return verdictInvalidStyle.Render("SIGNATURE INVALID") + mutedStyle.Render(" · "+p.VerdictReason)
 	default:
 		if p.Mode == Sign {
-			return mutedStyle.Render("Подпись появится после RUN")
+			return mutedStyle.Render("Signature appears here after RUN")
 		}
-		return mutedStyle.Render("Введите подпись r||s и нажмите RUN")
+		return mutedStyle.Render("Enter the signature as r||s and press RUN")
 	}
 }
 
