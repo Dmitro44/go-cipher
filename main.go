@@ -9,6 +9,7 @@ import (
 	"go-cipher/internal/ui/asympane"
 	"go-cipher/internal/ui/cipherpane"
 	"go-cipher/internal/ui/hashpane"
+	"go-cipher/internal/ui/signpane"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -18,6 +19,7 @@ func main() {
 	belt := cipher.NewBelt()
 	rabin := cipher.NewRabin()
 	mceliece := cipher.NewMcEliece()
+	signature := cipher.NewGost3410()
 
 	m := ui.NewModel(
 		ui.Tab{Title: gost.Name(), Pane: cipherpane.NewCipherPane(gost)},
@@ -25,6 +27,7 @@ func main() {
 		ui.Tab{Title: rabin.Name(), Pane: asympane.NewAsymPane(rabin)},
 		ui.Tab{Title: mceliece.Name(), Pane: asympane.NewAsymPane(mceliece)},
 		ui.Tab{Title: "Hash", Pane: hashpane.NewHashPane()},
+		ui.Tab{Title: "Signature", Pane: signpane.NewSignPane(signature)},
 	)
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
