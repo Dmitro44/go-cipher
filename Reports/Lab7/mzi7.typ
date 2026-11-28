@@ -41,7 +41,7 @@ $
 
 $
   lambda = (y_2 - y_1)(x_2 - x_1)^(-1) mod p, quad
-  x_3 = lambda^2 - x_1 - x_2, quad
+  x_3 = lambda^2 - x_1 - x_2, \
   y_3 = lambda (x_1 - x_3) - y_1.
 $
 
