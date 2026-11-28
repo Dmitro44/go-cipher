@@ -1,13 +1,11 @@
+// Прямое и обратное дискретное косинусное преобразование блока 8x8.
+
 package stego
 
 import "math"
 
-// blockSide — сторона блока JPEG. В стандарте изображение делится на блоки
-// 8×8, и дискретное косинусное преобразование применяется к каждому блоку.
 const blockSide = 8
 
-// dctBasis[u][x] = C(u) * cos((2x+1)uπ/16), где C(0) = 1/√2, C(u>0) = 1.
-// Таблица считается один раз: базисные функции от блока не зависят.
 var dctBasis = newDCTBasis()
 
 func newDCTBasis() [blockSide][blockSide]float64 {
@@ -28,12 +26,6 @@ func newDCTBasis() [blockSide][blockSide]float64 {
 	return basis
 }
 
-// forwardDCT вычисляет двумерное DCT-II блока 8×8.
-//
-//	F(u,v) = 1/4 · C(u)C(v) · Σx Σy f(x,y) cos((2x+1)uπ/16) cos((2y+1)vπ/16)
-//
-// Преобразование разделимо, поэтому сначала считаются суммы по строкам
-// (горизонтальная частота u), затем по столбцам (вертикальная частота v).
 func forwardDCT(block [blockSide][blockSide]float64) [blockSide][blockSide]float64 {
 	var rows [blockSide][blockSide]float64
 
@@ -62,11 +54,6 @@ func forwardDCT(block [blockSide][blockSide]float64) [blockSide][blockSide]float
 	return coefficients
 }
 
-// inverseDCT восстанавливает блок 8×8 из его спектра:
-//
-//	f(x,y) = 1/4 · Σu Σv C(u)C(v) F(u,v) cos((2x+1)uπ/16) cos((2y+1)vπ/16)
-//
-// Как и прямое преобразование, обратное выполняется разделимо.
 func inverseDCT(coefficients [blockSide][blockSide]float64) [blockSide][blockSide]float64 {
 	var columns [blockSide][blockSide]float64
 

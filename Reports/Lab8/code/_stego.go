@@ -1,3 +1,5 @@
+// Встраивание и извлечение сообщения в коэффициентах ДКП.
+
 package stego
 
 import (
@@ -18,9 +20,6 @@ import (
 	"sync"
 )
 
-// quantizationStep — шаг квантования QIM. Больше шаг — устойчивее бит к
-// повторному сжатию и шуму, но заметнее искажение блока. При q = 16
-// изменение среднего коэффициента не превышает 8, что на глаз незаметно.
 const quantizationStep = 16.0
 
 const (
@@ -28,8 +27,6 @@ const (
 	headerSize    = len(magic) + 1 + 4
 )
 
-// magic отделяет наше сообщение от произвольных битов, которые можно
-// прочитать из коэффициентов обычной фотографии.
 var magic = [7]byte{'M', 'Z', 'I', 'S', 'T', 'E', 'G'}
 
 var (
@@ -43,9 +40,6 @@ var (
 	ErrUnsupportedInput = errors.New("stego: unsupported image format")
 )
 
-// coefficient задаёт позицию среднечастотного коэффициента DCT. Низкие
-// частоты слишком заметны для глаза, высокие — неустойчивы к сжатию,
-// поэтому выбраны два симметричных среднечастотных коэффициента.
 type coefficient struct {
 	u, v int
 }
@@ -55,8 +49,6 @@ var payloadCoefficients = [2]coefficient{
 	{u: 4, v: 3},
 }
 
-// Stats описывает результат встраивания и заполняется так, чтобы интерфейс
-// мог показать цену сокрытия: ёмкость, искажение и число изменённых пикселей.
 type Stats struct {
 	Width         int
 	Height        int
@@ -71,8 +63,6 @@ type Stats struct {
 	PSNR          float64
 }
 
-// Capacity возвращает ёмкость изображения в битах: по два бита на каждый
-// полный блок 8×8. Неполные блоки по краям не используются.
 func Capacity(img image.Image) int {
 	if img == nil {
 		return 0
@@ -81,15 +71,10 @@ func Capacity(img image.Image) int {
 	return 2 * (bounds.Dx() / blockSide) * (bounds.Dy() / blockSide)
 }
 
-// MaxMessage возвращает наибольшую длину сообщения в байтах: ёмкость за
-// вычетом служебного заголовка кадра.
 func MaxMessage(img image.Image) int {
 	return max(0, Capacity(img)/8-headerSize)
 }
 
-// DecodeFile читает изображение из файла. Поддерживаются JPEG и PNG:
-// JPEG — исходный контейнер, PNG — контейнер, в который мы записываем
-// результат без повторного квантования.
 func DecodeFile(path string) (image.Image, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -107,8 +92,6 @@ func DecodeFile(path string) (image.Image, error) {
 	return img, nil
 }
 
-// WritePNG сохраняет контейнер без потерь. Повторное сохранение в JPEG
-// недопустимо: квантование JPEG изменит коэффициенты и разрушит биты.
 func WritePNG(path string, img image.Image) error {
 	file, err := os.Create(path)
 	if err != nil {
@@ -125,8 +108,6 @@ func WritePNG(path string, img image.Image) error {
 	return nil
 }
 
-// OutputPath строит имя контейнера рядом с исходным файлом:
-// photo.jpg → stego-photo.png.
 func OutputPath(sourcePath string) string {
 	dir := filepath.Dir(sourcePath)
 	name := filepath.Base(sourcePath)
@@ -134,8 +115,6 @@ func OutputPath(sourcePath string) string {
 	return filepath.Join(dir, "stego-"+strings.TrimSuffix(name, ext)+".png")
 }
 
-// Embed скрывает сообщение в среднечастотных коэффициентах DCT яркости.
-// Возвращается изображение RGBA, которое нужно сохранять только как PNG.
 func Embed(img image.Image, message []byte) (*image.RGBA, Stats, error) {
 	if img == nil {
 		return nil, Stats{}, ErrNilImage
@@ -184,10 +163,6 @@ func Embed(img image.Image, message []byte) (*image.RGBA, Stats, error) {
 	return stego, stats, nil
 }
 
-// embedBlocks раскладывает биты по блокам слева направо и сверху вниз. Блоки
-// друг от друга не зависят, поэтому строки блоков делятся на полосы, и каждая
-// полоса обрабатывается своей горутиной: номер блока задаёт его биты, так что
-// синхронизация не нужна. На 4K это сокращает время с секунд до десятых.
 func embedBlocks(source, stego *image.RGBA, columns, rows int, bits []byte) int {
 	workers := blockWorkers(rows)
 	used := make([]int, workers)
@@ -242,7 +217,6 @@ func embedBand(source, stego *image.RGBA, columns, startRow, endRow int, bits []
 	return used
 }
 
-// Extract читает сообщение из коэффициентов изображения.
 func Extract(img image.Image) ([]byte, error) {
 	if img == nil {
 		return nil, ErrNilImage
@@ -283,10 +257,6 @@ func Extract(img image.Image) ([]byte, error) {
 	return bitsToBytes(bits[headerSize*8 : end]), nil
 }
 
-// embedBit ставит коэффициент в центр квантованной ячейки, номер которой
-// имеет нужную чётность. Решающая граница находится на расстоянии q/2 от
-// центра, поэтому ошибка округления при обратном DCT и сохранении в PNG
-// не может перевернуть бит.
 func embedBit(value float64, bit byte) float64 {
 	index := int(math.Round(value / quantizationStep))
 	if parity(index) != bit {
@@ -301,7 +271,6 @@ func embedBit(value float64, bit byte) float64 {
 	return float64(index) * quantizationStep
 }
 
-// readBit повторяет квантование и возвращает чётность номера ячейки.
 func readBit(value float64) byte {
 	return parity(int(math.Round(value / quantizationStep)))
 }
@@ -366,13 +335,6 @@ func bitsToBytes(bits []byte) []byte {
 	return out
 }
 
-// quote: helpers below work on *image.RGBA.
-
-// toRGBA приводит изображение к RGBA: дальше пиксели читаются и пишутся по
-// слайсу Pix, без интерфейсных вызовов At/Set на каждый пиксель.
-// Под-изображение сохраняет шаг родителя и ненулевой Rect.Min, а циклы по
-// блокам отсчитывают пиксели от (0,0), поэтому такое изображение копируется
-// в плотный RGBA, а не используется как есть.
 func toRGBA(img image.Image) *image.RGBA {
 	if rgba, ok := img.(*image.RGBA); ok && rgba.Rect.Min == (image.Point{}) {
 		return rgba
@@ -383,7 +345,6 @@ func toRGBA(img image.Image) *image.RGBA {
 	return out
 }
 
-// blockWorkers ограничивает число горутин числом полос и ядер.
 func blockWorkers(rows int) int {
 	workers := runtime.NumCPU()
 	if workers > rows {
@@ -395,8 +356,6 @@ func blockWorkers(rows int) int {
 	return workers
 }
 
-// extractBits читает биты из коэффициентов блоков — та же разбивка на полосы,
-// что и при встраивании, но только чтение.
 func extractBits(source *image.RGBA, columns, rows int, bits []byte) {
 	workers := blockWorkers(rows)
 
@@ -422,7 +381,6 @@ func extractBits(source *image.RGBA, columns, rows int, bits []byte) {
 	wg.Wait()
 }
 
-// readLumaBlock читает блок 8×8 и переводит пиксели в яркость.
 func readLumaBlock(img *image.RGBA, x0, y0 int) [blockSide][blockSide]float64 {
 	var block [blockSide][blockSide]float64
 	for y := 0; y < blockSide; y++ {
@@ -435,9 +393,6 @@ func readLumaBlock(img *image.RGBA, x0, y0 int) [blockSide][blockSide]float64 {
 	return block
 }
 
-// writeBlockDelta добавляет к R, G и B одну и ту же разность яркостей.
-// Прибавка ко всем каналам сохраняет оттенок, а яркость результата
-// совпадает с восстановленной яркостью блока с точностью до округления.
 func writeBlockDelta(stego, source *image.RGBA, x0, y0 int, original, rebuilt [blockSide][blockSide]float64) {
 	for y := 0; y < blockSide; y++ {
 		offset := source.PixOffset(x0, y0+y)
@@ -456,8 +411,6 @@ func lumaRGB(r, g, b uint8) float64 {
 	return 0.299*float64(r) + 0.587*float64(g) + 0.114*float64(b)
 }
 
-// Luma переводит пиксель в яркость по формуле JPEG. Одинаковая формула
-// используется и при встраивании, и при извлечении.
 func Luma(pixel color.Color) float64 {
 	value := color.NRGBAModel.Convert(pixel).(color.NRGBA)
 	return lumaRGB(value.R, value.G, value.B)

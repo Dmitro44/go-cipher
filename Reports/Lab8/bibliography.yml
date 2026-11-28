@@ -22,15 +22,6 @@ menezes1996:
   page-total: 780
   language: en
 
-mzi2024:
-  type: Report
-  title:
-    value: "Лабораторные работы по дисциплине «Методы защиты информации» : методические указания"
-    short: ""
-  date: 2024
-  organization: БГУИР
-  language: ru
-
 fridrich2010:
   type: Book
   title:
@@ -62,7 +53,7 @@ chen2001:
 jpeg1992:
   type: Report
   title:
-    value: "Information technology — Digital compression and coding of continuous-tone still images: Requirements and guidelines"
+    value: "Information technology -- Digital compression and coding of continuous-tone still images: Requirements and guidelines"
     short: ""
   organization: "ITU-T / ISO/IEC"
   serial-number: "ITU-T Recommendation T.81 / ISO/IEC 10918-1"
