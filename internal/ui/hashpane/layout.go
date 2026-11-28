@@ -51,7 +51,7 @@ func NewLayout(width, height int) Layout {
 	l.TextareaWidth = l.LeftPanelWidth - 4
 	l.TextareaHeight = l.MessagePanelHeight - 1
 	l.FilepickerHeight = l.MessagePanelHeight - 1
-	l.DigestHeight = max(l.MessagePanelHeight-5, 2)
+	l.DigestHeight = max(l.MessagePanelHeight-6, 2)
 
 	return l
 }

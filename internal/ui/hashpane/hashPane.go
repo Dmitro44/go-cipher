@@ -454,9 +454,9 @@ func (p HashPane) verdict() (string, bool) {
 		return "", false
 	}
 	if strings.EqualFold(expected, p.Digest) {
-		return "СОВПАДАЕТ", true
+		return "MATCHES", true
 	}
-	return "НЕ СОВПАДАЕТ", false
+	return "MISMATCH", false
 }
 
 func (p HashPane) actionView(l Layout) string {

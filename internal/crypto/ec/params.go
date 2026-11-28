@@ -1,0 +1,52 @@
+package ec
+
+import "math/big"
+
+// Параметры эллиптических кривых ГОСТ Р 34.10-2012. Значения записаны в
+// шестнадцатеричном виде, старшим байтом вперёд, как в RFC 7836.
+
+// params256 — id-tc26-gost-3410-2012-256-paramSetA
+// (OID 1.2.643.7.1.2.1.1.1). В RFC 7836, прил. A.2 эта кривая задана в
+// скрученной форме Эдвардса; приведённые ниже p, a, b, n и G — её
+// каноническая короткая форма Вейерштрасса, полученная бирациональным
+// преобразованием. Порядок n — простое число, кофактор равен 4.
+var params256 = &Curve{
+	Name: "ГОСТ 34.10-2012 · 256",
+	P:    hexInt("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD97"),
+	A:    hexInt("C2173F1513981673AF4892C23035A27CE25E2013BF95AA33B22C656F277E7335"),
+	B:    hexInt("295F9BAE7428ED9CCC20E7C359A9D41A22FCCD9108E17BF7BA9337A6F8AE9513"),
+	N:    hexInt("400000000000000000000000000000000FD8CDDFC87B6635C115AF556C360C67"),
+	GX:   hexInt("91E38443A5E82C0D880923425712B2BB658B9196932E02C78B2582FE742DAA28"),
+	GY:   hexInt("32879423AB1A0375895786C4BB46E9565FDE0B5344766740AF268ADB32322E5C"),
+}
+
+// params512 — id-tc26-gost-3410-12-512-paramSetA
+// (OID 1.2.643.7.1.2.1.2.1), RFC 7836, прил. A.1.
+var params512 = &Curve{
+	Name: "ГОСТ 34.10-2012 · 512",
+	P:    hexInt("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDC7"),
+	A:    hexInt("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDC4"),
+	B:    hexInt("E8C2505DEDFC86DDC1BD0B2B6667F1DA34B82574761CB0E879BD081CFD0B6265" + "EE3CB090F30D27614CB4574010DA90DD862EF9D4EBEE4761503190785A71C760"),
+	N:    hexInt("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" + "27E69532F48D89116FF22B8D4E0560609B4B38ABFAD2B85DCACDB1411F10B275"),
+	GX:   big.NewInt(3),
+	GY:   hexInt("7503CFE87A836AE3A61B8816E25450E6CE5E1C93ACF1ABC1778064FDCBEFA921" + "DF1626BE4FD036E93D75E6A50E3A41E98028FE5FC235F5B889A589CB5215F2A4"),
+}
+
+// Params256 возвращает параметры 256-битной кривой.
+func Params256() *Curve {
+	return params256.clone()
+}
+
+// Params512 возвращает параметры 512-битной кривой.
+func Params512() *Curve {
+	return params512.clone()
+}
+
+// hexInt разбирает шестнадцатеричную запись числа.
+func hexInt(s string) *big.Int {
+	n, ok := new(big.Int).SetString(s, 16)
+	if !ok {
+		panic("ec: invalid hexadecimal constant " + s)
+	}
+	return n
+}
