@@ -1,15 +1,9 @@
+// Параметры кривых ГОСТ Р 34.10-2012.
+
 package ec
 
 import "math/big"
 
-// Параметры эллиптических кривых ГОСТ Р 34.10-2012. Значения записаны в
-// шестнадцатеричном виде, старшим байтом вперёд, как в RFC 7836.
-
-// params256 — id-tc26-gost-3410-2012-256-paramSetA
-// (OID 1.2.643.7.1.2.1.1.1). В RFC 7836, прил. A.2 эта кривая задана в
-// скрученной форме Эдвардса; приведённые ниже p, a, b, n и G — её
-// каноническая короткая форма Вейерштрасса, полученная бирациональным
-// преобразованием. Порядок n — простое число, кофактор равен 4.
 var params256 = &Curve{
 	Name: "ГОСТ 34.10-2012 · 256",
 	P:    hexInt("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD97"),
@@ -20,8 +14,6 @@ var params256 = &Curve{
 	GY:   hexInt("32879423AB1A0375895786C4BB46E9565FDE0B5344766740AF268ADB32322E5C"),
 }
 
-// params512 — id-tc26-gost-3410-12-512-paramSetA
-// (OID 1.2.643.7.1.2.1.2.1), RFC 7836, прил. A.1.
 var params512 = &Curve{
 	Name: "ГОСТ 34.10-2012 · 512",
 	P:    hexInt("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDC7"),
@@ -32,17 +24,14 @@ var params512 = &Curve{
 	GY:   hexInt("7503CFE87A836AE3A61B8816E25450E6CE5E1C93ACF1ABC1778064FDCBEFA921" + "DF1626BE4FD036E93D75E6A50E3A41E98028FE5FC235F5B889A589CB5215F2A4"),
 }
 
-// Params256 возвращает параметры 256-битной кривой.
 func Params256() *Curve {
 	return params256.clone()
 }
 
-// Params512 возвращает параметры 512-битной кривой.
 func Params512() *Curve {
 	return params512.clone()
 }
 
-// hexInt разбирает шестнадцатеричную запись числа.
 func hexInt(s string) *big.Int {
 	n, ok := new(big.Int).SetString(s, 16)
 	if !ok {
