@@ -1,3 +1,5 @@
+// Адаптер схемы Эль-Гамаля к интерфейсу AsymCipher.
+
 package cipher
 
 import (
@@ -8,13 +10,6 @@ import (
 	"go-cipher/internal/crypto/ecelgamal"
 )
 
-// ElGamal — адаптер схемы Эль-Гамаля на эллиптических кривых к интерфейсу
-// AsymCipher.
-//
-// Ключи кодируются числами фиксированной ширины, равной длине модуля p в
-// байтах: 32 байта для 256-битной кривой и 64 для 512-битной. Открытый ключ
-// — x||y точки Q, закрытый — само число d. Шифртекст — последовательность
-// блоков C1||C2, которые формирует пакет ecelgamal.
 type ElGamal struct{}
 
 func NewElGamal() ElGamal {
@@ -44,7 +39,6 @@ func (ElGamal) GenerateKeys(option KeyOption) (KeyPair, error) {
 	}
 
 	width := numberWidth(c)
-	// Открытый ключ — x||y, закрытый — d.
 	public := make([]byte, 2*width)
 	pub.X.FillBytes(public[:width])
 	pub.Y.FillBytes(public[width:])
